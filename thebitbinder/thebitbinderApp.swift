@@ -27,9 +27,9 @@ struct thebitbinderApp: App {
     }()
 
     var body: some Scene {
-        WindowGroup(content: {
+        WindowGroup {
             ContentView()
-        })
+        }
         .modelContainer(sharedModelContainer)
     }
 }
