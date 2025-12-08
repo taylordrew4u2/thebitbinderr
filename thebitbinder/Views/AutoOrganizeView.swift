@@ -17,6 +17,10 @@ struct AutoOrganizeView: View {
     
     @State private var categories = AutoOrganizeService.getCategories()
     @State private var newCategory = ""
+    @State private var isOrganizing = false
+    @State private var showResults = false
+    @State private var organizedCount = 0
+    @State private var needsReviewCount = 0
     
     var unorganizedJokes: [Joke] {
         jokes.filter { $0.folder == nil }
@@ -24,109 +28,150 @@ struct AutoOrganizeView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                ScrollView {
-                    VStack(spacing: 16) {
-                        // Unorganized Jokes Section
-                        if !unorganizedJokes.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Unorganized Jokes (\(unorganizedJokes.count))")
-                                    .font(.headline)
-                                    .padding(.horizontal)
-                                
-                                ForEach(unorganizedJokes) { joke in
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        Text(joke.title)
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Quick Actions
+                    if !unorganizedJokes.isEmpty {
+                        VStack(spacing: 12) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("\(unorganizedJokes.count) jokes need organizing")
+                                        .font(.headline)
+                                    Text("Let AI help you sort them")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(12)
+                            
+                            Button(action: organizeAll) {
+                                HStack {
+                                    if isOrganizing {
+                                        ProgressView()
+                                            .tint(.white)
+                                    } else {
+                                        Image(systemName: "wand.and.stars")
+                                        Text("Auto-Organize All")
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(12)
+                            }
+                            .disabled(isOrganizing)
+                            
+                            if showResults {
+                                VStack(spacing: 8) {
+                                    HStack {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                        Text("\(organizedCount) organized automatically")
                                             .font(.subheadline)
-                                            .fontWeight(.semibold)
-                                        
-                                        Text(joke.content)
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                            .lineLimit(2)
-                                        
-                                        Menu {
-                                            ForEach(categories, id: \.self) { category in
-                                                Button(category) {
-                                                    organizeJoke(joke, into: category)
-                                                }
-                                            }
-                                        } label: {
-                                            Text("Select Category")
-                                                .font(.caption)
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, 6)
-                                                .background(Color.blue)
-                                                .foregroundColor(.white)
-                                                .cornerRadius(6)
+                                    }
+                                    if needsReviewCount > 0 {
+                                        HStack {
+                                            Image(systemName: "questionmark.circle.fill")
+                                                .foregroundColor(.orange)
+                                            Text("\(needsReviewCount) need manual review")
+                                                .font(.subheadline)
                                         }
                                     }
-                                    .padding()
-                                    .background(Color(UIColor.systemGray6))
-                                    .cornerRadius(8)
                                 }
+                                .padding()
+                                .background(Color.green.opacity(0.1))
+                                .cornerRadius(8)
                             }
-                            .padding()
-                        } else {
-                            VStack(spacing: 12) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 50))
-                                    .foregroundColor(.green)
-                                Text("All Jokes Organized!")
-                                    .font(.headline)
-                                Text("Your jokes have been sorted into categories")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                            .padding()
                         }
-                        
-                        Divider()
-                            .padding(.vertical)
-                        
-                        // Manage Categories Section
+                        .padding(.horizontal)
+                    } else {
+                        VStack(spacing: 12) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 50))
+                                .foregroundColor(.green)
+                            Text("All Jokes Organized!")
+                                .font(.headline)
+                            Text("Great job keeping things tidy")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                    }
+                    
+                    // Individual Jokes with Smart Suggestions
+                    if !unorganizedJokes.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Manage Categories")
+                            Text("Review & Organize")
                                 .font(.headline)
                                 .padding(.horizontal)
                             
-                            VStack(spacing: 0) {
-                                ForEach(categories, id: \.self) { category in
-                                    HStack {
-                                        Text(category)
-                                            .font(.subheadline)
-                                        Spacer()
-                                        Button(action: { removeCategory(category) }) {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .foregroundColor(.red)
-                                        }
-                                    }
-                                    .padding()
-                                    .background(Color(UIColor.systemBackground))
-                                    .overlay(Divider(), alignment: .bottom)
-                                }
+                            ForEach(unorganizedJokes) { joke in
+                                JokeOrganizeCard(
+                                    joke: joke,
+                                    categories: categories,
+                                    folders: folders,
+                                    modelContext: modelContext
+                                )
                             }
-                            .background(Color(UIColor.systemGray6))
-                            .cornerRadius(8)
+                        }
+                        .padding(.horizontal)
+                    }
+                    
+                    Divider()
+                        .padding(.vertical)
+                    
+                    // Manage Categories
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Your Categories")
+                                .font(.headline)
+                            Spacer()
+                            Text("\(categories.count)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal)
+                        
+                        VStack(spacing: 8) {
+                            ForEach(categories, id: \.self) { category in
+                                HStack {
+                                    Image(systemName: "folder.fill")
+                                        .foregroundColor(.blue)
+                                    Text(category)
+                                        .font(.subheadline)
+                                    Spacer()
+                                    Button(action: { removeCategory(category) }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(.red.opacity(0.7))
+                                    }
+                                }
+                                .padding()
+                                .background(Color(UIColor.systemGray6))
+                                .cornerRadius(8)
+                            }
                             
                             HStack {
-                                TextField("New category", text: $newCategory)
+                                TextField("Add new category", text: $newCategory)
                                     .textFieldStyle(.roundedBorder)
                                 
                                 Button(action: addCategory) {
                                     Image(systemName: "plus.circle.fill")
                                         .foregroundColor(.blue)
-                                        .font(.system(size: 20))
+                                        .font(.system(size: 24))
                                 }
                                 .disabled(newCategory.trimmingCharacters(in: .whitespaces).isEmpty)
                             }
-                            .padding(.horizontal)
                         }
-                        .padding()
+                        .padding(.horizontal)
                     }
                     .padding(.vertical)
                 }
+                .padding(.vertical)
             }
             .navigationTitle("Auto-Organize")
             .navigationBarTitleDisplayMode(.inline)
@@ -140,13 +185,22 @@ struct AutoOrganizeView: View {
         }
     }
     
-    private func organizeJoke(_ joke: Joke, into category: String) {
-        AutoOrganizeService.organizeJoke(
-            joke,
-            intoCategory: category,
-            existingFolders: folders,
-            modelContext: modelContext
-        )
+    private func organizeAll() {
+        isOrganizing = true
+        showResults = false
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            let results = AutoOrganizeService.organizeAllJokes(
+                unorganizedJokes,
+                existingFolders: folders,
+                modelContext: modelContext
+            )
+            
+            organizedCount = results.organized
+            needsReviewCount = results.needsReview
+            isOrganizing = false
+            showResults = true
+        }
     }
     
     private func addCategory() {
@@ -161,5 +215,111 @@ struct AutoOrganizeView: View {
     private func removeCategory(_ category: String) {
         categories.removeAll { $0 == category }
         AutoOrganizeService.setCategories(categories)
+    }
+}
+
+// MARK: - Joke Organize Card
+
+struct JokeOrganizeCard: View {
+    let joke: Joke
+    let categories: [String]
+    let folders: [JokeFolder]
+    let modelContext: ModelContext
+    
+    @State private var suggestions: [(category: String, confidence: Int)] = []
+    @State private var showAllCategories = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(joke.title)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+            
+            Text(joke.content)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .lineLimit(2)
+            
+            if !suggestions.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Suggestions")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .textCase(.uppercase)
+                    
+                    HStack(spacing: 8) {
+                        ForEach(suggestions, id: \.category) { suggestion in
+                            Button(action: {
+                                organizeJoke(into: suggestion.category)
+                            }) {
+                                HStack(spacing: 4) {
+                                    Text(suggestion.category)
+                                    if suggestion.confidence >= 3 {
+                                        Image(systemName: "star.fill")
+                                            .font(.system(size: 8))
+                                            .foregroundColor(.yellow)
+                                    }
+                                }
+                                .font(.caption)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.15))
+                                .foregroundColor(.blue)
+                                .cornerRadius(6)
+                            }
+                        }
+                    }
+                }
+            }
+            
+            HStack {
+                Button(action: { showAllCategories.toggle() }) {
+                    HStack {
+                        Image(systemName: "folder")
+                        Text("More...")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+            }
+        }
+        .padding()
+        .background(Color(UIColor.systemGray6))
+        .cornerRadius(12)
+        .onAppear {
+            suggestions = AutoOrganizeService.suggestCategories(for: joke)
+        }
+        .sheet(isPresented: $showAllCategories) {
+            NavigationStack {
+                List(categories, id: \.self) { category in
+                    Button(action: {
+                        organizeJoke(into: category)
+                        showAllCategories = false
+                    }) {
+                        Text(category)
+                    }
+                }
+                .navigationTitle("Choose Category")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Cancel") {
+                            showAllCategories = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private func organizeJoke(into category: String) {
+        AutoOrganizeService.organizeJoke(
+            joke,
+            intoCategory: category,
+            existingFolders: folders,
+            modelContext: modelContext
+        )
     }
 }

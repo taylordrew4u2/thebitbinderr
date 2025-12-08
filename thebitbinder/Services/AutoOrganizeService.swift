@@ -14,18 +14,18 @@ class AutoOrganizeService {
     
     static let defaultCategories = [
         "Relationships",
-        "Work & Office",
-        "Food & Cooking",
-        "Travel & Places",
-        "Observational",
-        "Dark Humor"
+        "Work & Career",
+        "Food & Dining",
+        "Travel",
+        "Family",
+        "Observational"
     ]
     
-    // MARK: - Get Categories
+    // MARK: - Category Management
     
     static func getCategories() -> [String] {
-        if let saved = UserDefaults.standard.array(forKey: "jokeCategories") as? [String] {
-            return saved.isEmpty ? defaultCategories : saved
+        if let saved = UserDefaults.standard.array(forKey: "jokeCategories") as? [String], !saved.isEmpty {
+            return saved
         }
         return defaultCategories
     }
@@ -34,52 +34,106 @@ class AutoOrganizeService {
         UserDefaults.standard.set(categories, forKey: "jokeCategories")
     }
     
-    // MARK: - Auto-Categorize Jokes
+    static func addCategory(_ category: String) {
+        var categories = getCategories()
+        if !categories.contains(category) {
+            categories.append(category)
+            setCategories(categories)
+        }
+    }
     
-    static func categorizeJoke(_ joke: Joke) -> String? {
+    static func removeCategory(_ category: String) {
+        var categories = getCategories()
+        categories.removeAll { $0 == category }
+        setCategories(categories)
+    }
+    
+    // MARK: - Smart Categorization
+    
+    /// Suggests up to 3 best matching categories for a joke with confidence scores
+    static func suggestCategories(for joke: Joke) -> [(category: String, confidence: Int)] {
         let content = (joke.title + " " + joke.content).lowercased()
         let categories = getCategories()
+        var scores: [(String, Int)] = []
         
-        // Simple keyword matching based on categories
         for category in categories {
-            if matchesCategory(content, category: category) {
-                return category
+            let score = calculateMatchScore(content: content, category: category)
+            if score > 0 {
+                scores.append((category, score))
             }
         }
         
-        return nil // Return nil to let user choose
+        // Sort by score and return top 3
+        return scores.sorted { $0.1 > $1.1 }.prefix(3).map { ($0.0, $0.1) }
     }
     
-    private static func matchesCategory(_ content: String, category: String) -> Bool {
+    /// Automatically categorizes a joke (returns nil if confidence is too low)
+    static func autoCategorize(_ joke: Joke) -> String? {
+        let suggestions = suggestCategories(for: joke)
+        // Only auto-categorize if confidence is high (>= 3 keyword matches)
+        if let best = suggestions.first, best.confidence >= 3 {
+            return best.category
+        }
+        return nil
+    }
+    
+    private static func calculateMatchScore(content: String, category: String) -> Int {
+        let keywords = getKeywords(for: category)
+        var score = 0
+        
+        for keyword in keywords {
+            if content.contains(keyword) {
+                score += 1
+                // Bonus for exact word match (not just substring)
+                let words = content.components(separatedBy: .whitespacesAndNewlines)
+                if words.contains(keyword) {
+                    score += 1
+                }
+            }
+        }
+        
+        return score
+    }
+    
+    private static func getKeywords(for category: String) -> [String] {
         let categoryLower = category.lowercased()
         
+        // Built-in keyword sets for common categories
         switch categoryLower {
-        case "relationships":
-            let keywords = ["boyfriend", "girlfriend", "husband", "wife", "marriage", "date", "love", "romance", "breakup", "partner", "dating", "kiss", "wedding"]
-            return keywords.contains { content.contains($0) }
+        case let c where c.contains("relationship") || c.contains("dating") || c.contains("love"):
+            return ["boyfriend", "girlfriend", "husband", "wife", "marriage", "date", "dating", "love", "romance", "breakup", "partner", "kiss", "wedding", "tinder", "ex"]
             
-        case "work & office":
-            let keywords = ["boss", "employee", "manager", "office", "work", "job", "interview", "meeting", "coworker", "promotion", "fired"]
-            return keywords.contains { content.contains($0) }
+        case let c where c.contains("work") || c.contains("career") || c.contains("job") || c.contains("office"):
+            return ["boss", "employee", "manager", "office", "work", "job", "interview", "meeting", "coworker", "colleague", "fired", "quit", "promotion", "salary", "career"]
             
-        case "food & cooking":
-            let keywords = ["food", "eat", "dinner", "lunch", "breakfast", "cook", "restaurant", "pizza", "burger", "steak", "cake", "beer", "wine"]
-            return keywords.contains { content.contains($0) }
+        case let c where c.contains("food") || c.contains("cook") || c.contains("restaurant") || c.contains("dining"):
+            return ["food", "eat", "dinner", "lunch", "breakfast", "cook", "restaurant", "pizza", "burger", "steak", "cake", "beer", "wine", "chef", "menu", "waiter"]
             
-        case "travel & places":
-            let keywords = ["travel", "vacation", "airport", "hotel", "beach", "mountain", "trip", "flight", "tourist", "country", "city"]
-            return keywords.contains { content.contains($0) }
+        case let c where c.contains("travel") || c.contains("vacation") || c.contains("trip"):
+            return ["travel", "vacation", "airport", "hotel", "beach", "trip", "flight", "tourist", "passport", "plane", "visit"]
             
-        case "dark humor":
-            let keywords = ["death", "dying", "dead", "kill", "suicide", "dark", "evil", "hell", "damn"]
-            return keywords.contains { content.contains($0) }
+        case let c where c.contains("family") || c.contains("parent") || c.contains("kid"):
+            return ["mom", "dad", "mother", "father", "parent", "kid", "kids", "child", "children", "family", "baby", "son", "daughter"]
+            
+        case let c where c.contains("tech") || c.contains("computer") || c.contains("phone"):
+            return ["computer", "phone", "app", "internet", "tech", "coding", "programmer", "software", "iphone", "android", "wifi"]
+            
+        case let c where c.contains("animal") || c.contains("pet"):
+            return ["dog", "cat", "pet", "animal", "puppy", "kitten", "bird", "fish"]
+            
+        case let c where c.contains("dark"):
+            return ["death", "die", "dead", "kill", "murder", "dark", "evil", "hell"]
+            
+        case let c where c.contains("sport") || c.contains("gym") || c.contains("fitness"):
+            return ["sport", "football", "basketball", "soccer", "baseball", "gym", "workout", "exercise", "game", "team"]
             
         default:
-            return false
+            // For custom categories, return empty (user will manually categorize)
+            return []
         }
     }
     
-    // MARK: - Organize Jokes
+    // MARK: - Organization Actions
     
     static func organizeJoke(
         _ joke: Joke,
@@ -95,6 +149,26 @@ class AutoOrganizeService {
         }
         
         joke.folder = targetFolder
-        print("✅ Organized '\(joke.title)' into '\(categoryName)'")
+    }
+    
+    /// Bulk organize jokes with smart categorization
+    static func organizeAllJokes(
+        _ jokes: [Joke],
+        existingFolders: [JokeFolder],
+        modelContext: ModelContext
+    ) -> (organized: Int, needsReview: Int) {
+        var organized = 0
+        var needsReview = 0
+        
+        for joke in jokes {
+            if let category = autoCategorize(joke) {
+                organizeJoke(joke, intoCategory: category, existingFolders: existingFolders, modelContext: modelContext)
+                organized += 1
+            } else {
+                needsReview += 1
+            }
+        }
+        
+        return (organized, needsReview)
     }
 }
