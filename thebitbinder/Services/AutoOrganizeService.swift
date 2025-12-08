@@ -8,6 +8,15 @@
 import Foundation
 import SwiftData
 
+// Protocol for categorizable jokes
+protocol Categorizable {
+    var title: String { get }
+    var content: String { get }
+}
+
+// Make Joke conform to Categorizable
+extension Joke: Categorizable {}
+
 class AutoOrganizeService {
     
     // MARK: - Default Categories
@@ -51,7 +60,7 @@ class AutoOrganizeService {
     // MARK: - Smart Categorization
     
     /// Suggests up to 3 best matching categories for a joke with confidence scores
-    static func suggestCategories(for joke: Joke) -> [(category: String, confidence: Int)] {
+    static func suggestCategories(for joke: Categorizable) -> [(category: String, confidence: Int)] {
         let content = (joke.title + " " + joke.content).lowercased()
         let categories = getCategories()
         var scores: [(String, Int)] = []
@@ -68,7 +77,7 @@ class AutoOrganizeService {
     }
     
     /// Automatically categorizes a joke (returns nil if confidence is too low)
-    static func autoCategorize(_ joke: Joke) -> String? {
+    static func autoCategorize(_ joke: Categorizable) -> String? {
         let suggestions = suggestCategories(for: joke)
         // Only auto-categorize if confidence is high (>= 3 keyword matches)
         if let best = suggestions.first, best.confidence >= 3 {
