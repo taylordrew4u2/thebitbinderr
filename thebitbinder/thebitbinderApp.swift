@@ -12,7 +12,10 @@ import SwiftData
 struct thebitbinderApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Joke.self,
+            JokeFolder.self,
+            SetList.self,
+            Recording.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -24,9 +27,9 @@ struct thebitbinderApp: App {
     }()
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(content: {
             ContentView()
-        }
+        })
         .modelContainer(sharedModelContainer)
     }
 }

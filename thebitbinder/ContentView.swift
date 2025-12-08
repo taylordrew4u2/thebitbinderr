@@ -9,58 +9,61 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
+    @State private var showLaunchScreen = true
+    
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
+        ZStack {
+            if showLaunchScreen {
+                LaunchScreenView()
+                    .transition(.opacity)
+            } else {
+                MainTabView()
+                    .transition(.opacity)
             }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
         }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    showLaunchScreen = false
+                }
             }
         }
     }
 }
 
+struct MainTabView: View {
+    var body: some View {
+        TabView {
+            HomeView()
+                .tabItem {
+                    Label("Home", systemImage: "house.fill")
+                }
+            
+            JokesView()
+                .tabItem {
+                    Label("Jokes", systemImage: "text.bubble")
+                }
+            
+            SetListsView()
+                .tabItem {
+                    Label("Set Lists", systemImage: "list.bullet.clipboard")
+                }
+            
+            RecordingsView()
+                .tabItem {
+                    Label("Recordings", systemImage: "mic.circle")
+                }
+            
+            HelpView()
+                .tabItem {
+                    Label("Help", systemImage: "questionmark.circle")
+                }
+        }
+        .tint(.blue)
+    }
+}
+
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .modelContainer(for: Joke.self, inMemory: true)
 }
