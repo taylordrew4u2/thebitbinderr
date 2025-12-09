@@ -17,6 +17,72 @@ final class Joke {
     var dateModified: Date
     var folder: JokeFolder?
     
+    // Smart categorization fields - stored as strings to avoid SwiftData array issues
+    @Attribute(.ephemeral) var categorizationResults: [CategoryMatch] = []
+    var primaryCategory: String?
+    
+    // Store as comma-separated string internally
+    private var allCategoriesString: String = ""
+    private var categoryScoresString: String = ""  // format: "category1:0.8|category2:0.6"
+    private var styleTagsString: String = ""
+    private var craftNotesString: String = ""
+    
+    // Additional fields for comedic elements
+    var comedicTone: String?
+    var comedicHook: String?
+    var structureScore: Double?
+    
+    // Computed property for allCategories
+    var allCategories: [String] {
+        get {
+            guard !allCategoriesString.isEmpty else { return [] }
+            return allCategoriesString.split(separator: ",").map { String($0) }
+        }
+        set {
+            allCategoriesString = newValue.joined(separator: ",")
+        }
+    }
+    
+    // Computed property for categoryConfidenceScores
+    var categoryConfidenceScores: [String: Double] {
+        get {
+            guard !categoryScoresString.isEmpty else { return [:] }
+            var result: [String: Double] = [:]
+            for pair in categoryScoresString.split(separator: "|") {
+                let parts = pair.split(separator: ":")
+                if parts.count == 2, let score = Double(parts[1]) {
+                    result[String(parts[0])] = score
+                }
+            }
+            return result
+        }
+        set {
+            categoryScoresString = newValue.map { "\($0.key):\($0.value)" }.joined(separator: "|")
+        }
+    }
+    
+    // Computed property for styleTags
+    var styleTags: [String] {
+        get {
+            guard !styleTagsString.isEmpty else { return [] }
+            return styleTagsString.split(separator: ",").map { String($0) }
+        }
+        set {
+            styleTagsString = newValue.joined(separator: ",")
+        }
+    }
+    
+    // Computed property for craftNotes
+    var craftNotes: [String] {
+        get {
+            guard !craftNotesString.isEmpty else { return [] }
+            return craftNotesString.split(separator: "|").map { String($0) }
+        }
+        set {
+            craftNotesString = newValue.joined(separator: "|")
+        }
+    }
+    
     init(content: String, title: String = "", folder: JokeFolder? = nil) {
         self.id = UUID()
         self.content = content

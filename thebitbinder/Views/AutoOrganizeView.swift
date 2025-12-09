@@ -15,362 +15,433 @@ struct AutoOrganizeView: View {
     @Query private var jokes: [Joke]
     @Query private var folders: [JokeFolder]
     
-    @State private var categories: [String] = []
-    @State private var newCategory = ""
-    @State private var showingResults = false
-    @State private var categorizationResults: [CategorizationResult] = []
-    @State private var organizedCount = 0
-    @State private var isOrganizing = false
+    @State private var categories = AutoOrganizeService.getCategories()
+    @State private var showOrganizationSummary = false
+    @State private var organizationStats: (organized: Int, suggested: Int) = (0, 0)
+    @State private var categorizationResults: [CategoryMatch] = []
+    @State private var selectedJoke: Joke?
+    @State private var showCategoryDetails = false
+    
+    var unorganizedJokes: [Joke] {
+        jokes.filter { $0.folder == nil }
+    }
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                if !showingResults {
-                    // Setup View
-                    setupView
-                } else {
-                    // Results View
-                    resultsView
+                ScrollView {
+                    VStack(spacing: 16) {
+                        // Quick Auto-Organize Button
+                        if !unorganizedJokes.isEmpty {
+                            Button(action: performAutoOrganize) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "wand.and.stars")
+                                        .font(.system(size: 16, weight: .semibold))
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Smart Auto-Organize")
+                                            .font(.headline)
+                                        Text("AI-powered categorization")
+                                            .font(.caption)
+                                            .foregroundColor(.white.opacity(0.8))
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 14, weight: .semibold))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [.blue.opacity(0.8), .blue.opacity(0.6)]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .cornerRadius(10)
+                            }
+                            .padding()
+                        }
+                        
+                        // Unorganized Jokes Section
+                        if !unorganizedJokes.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Suggested Categories (\(unorganizedJokes.count))")
+                                    .font(.headline)
+                                    .padding(.horizontal)
+                                
+                                ForEach(unorganizedJokes) { joke in
+                                    JokeOrganizationCard(
+                                        joke: joke,
+                                        onTap: {
+                                            selectedJoke = joke
+                                            showCategoryDetails = true
+                                        },
+                                        onAccept: { category in
+                                            assignJokeToFolder(joke, category: category)
+                                        }
+                                    )
+                                }
+                            }
+                            .padding()
+                        } else {
+                            VStack(spacing: 12) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(.green)
+                                Text("All Jokes Organized!")
+                                    .font(.headline)
+                                Text("Your jokes have been sorted into categories with confidence scoring")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                            .padding()
+                        }
+                        
+                        if !unorganizedJokes.isEmpty {
+                            Divider()
+                                .padding(.vertical)
+                        }
+                        
+                        // Category Management Section
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("All Categories")
+                                .font(.headline)
+                                .padding(.horizontal)
+                            
+                            VStack(spacing: 8) {
+                                ForEach(categories, id: \.self) { category in
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(category)
+                                                .font(.subheadline)
+                                                .fontWeight(.semibold)
+                                            let jokeCount = jokes.filter { $0.folder?.name == category }.count
+                                            if jokeCount > 0 {
+                                                Text("\(jokeCount) jokes")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                        Spacer()
+                                        Image(systemName: "folder.fill")
+                                            .foregroundColor(.blue)
+                                            .opacity(0.6)
+                                    }
+                                    .padding()
+                                    .background(Color(UIColor.systemGray6))
+                                    .cornerRadius(8)
+                                }
+                            }
+                        }
+                        .padding()
+                    }
+                    .padding(.vertical)
                 }
             }
-            .navigationTitle("Auto-Organize")
+            .navigationTitle("Smart Auto-Organize")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if !showingResults {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        EditButton()
-                    }
-                }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(showingResults ? "Close" : "Done") {
+                    Button("Done") {
                         dismiss()
                     }
                 }
             }
-            .onAppear {
-                categories = AutoOrganizeService.getUserCategories()
+            .sheet(isPresented: $showCategoryDetails) {
+                if let joke = selectedJoke {
+                    CategorySuggestionDetail(
+                        joke: joke,
+                        onSelectCategory: { category in
+                            assignJokeToFolder(joke, category: category)
+                            showCategoryDetails = false
+                        }
+                    )
+                }
+            }
+            .alert("Organization Complete", isPresented: $showOrganizationSummary) {
+                Button("Done") { }
+            } message: {
+                Text("✅ Organized: \(organizationStats.organized) jokes\n⚠️ Suggested: \(organizationStats.suggested) jokes")
             }
         }
     }
     
-    // MARK: - Setup View
-    
-    private var setupView: some View {
-        VStack(spacing: 0) {
-            // Header Info
-            VStack(spacing: 8) {
-                Image(systemName: "brain.head.profile")
-                    .font(.system(size: 40))
-                    .foregroundColor(.purple)
-                
-                Text("Smart Auto-Organize")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                
-                Text("\(jokes.count) jokes • Advanced pattern detection")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            .padding()
-            .frame(maxWidth: .infinity)
-            .background(Color(.systemGray6))
-            
-            // Edit Categories Section
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Categories")
-                        .font(.headline)
-                    
-                    Spacer()
-                    
-                    Button("Reset to Defaults") {
-                        AutoOrganizeService.resetToDefaults()
-                        categories = AutoOrganizeService.getUserCategories()
-                    }
-                    .font(.caption)
-                    .foregroundColor(.blue)
-                }
-                .padding(.horizontal)
-                .padding(.top)
-                
-                Text("Detects patterns like \"what I look like\", \"my wife\", \"at work\" and more")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal)
-                
-                // Add New Category
-                HStack(spacing: 8) {
-                    TextField("Add new category...", text: $newCategory)
-                        .textFieldStyle(.roundedBorder)
-                    
-                    Button(action: addCategory) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.blue)
-                    }
-                    .disabled(newCategory.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-                .padding(.horizontal)
-            }
-            
-            // Category List
-            List {
-                ForEach(categories, id: \.self) { category in
-                    HStack(spacing: 12) {
-                        Image(systemName: "folder.fill")
-                            .foregroundColor(.orange)
-                        
-                        Text(category)
-                            .font(.body)
-                        
-                        Spacer()
-                        
-                        // Show joke count for this category
-                        let count = jokes.filter { $0.folder?.name == category }.count
-                        if count > 0 {
-                            Text("\(count)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(Color(.systemGray5))
-                                .cornerRadius(10)
-                        }
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            removeCategory(category)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    }
-                }
-                .onMove(perform: moveCategories)
-            }
-            .listStyle(.plain)
-            
-            // Organize Button
-            VStack(spacing: 12) {
-                Button(action: organizeAllJokes) {
-                    HStack(spacing: 12) {
-                        if isOrganizing {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        } else {
-                            Image(systemName: "brain.head.profile")
-                        }
-                        
-                        Text(isOrganizing ? "Analyzing..." : "Smart Organize")
-                            .fontWeight(.semibold)
-                    }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(categories.isEmpty ? Color.gray : Color.purple)
-                    .cornerRadius(12)
-                }
-                .disabled(categories.isEmpty || isOrganizing)
-                .padding(.horizontal)
-                
-                Text("Advanced AI detects patterns and groups similar jokes together")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .padding()
-            .background(Color(.systemBackground))
+    private func performAutoOrganize() {
+        AutoOrganizeService.autoOrganizeJokes(
+            unorganizedJokes: unorganizedJokes,
+            existingFolders: folders,
+            modelContext: modelContext
+        ) { organized, suggested in
+            organizationStats = (organized, suggested)
+            showOrganizationSummary = true
         }
     }
     
-    // MARK: - Results View
-    
-    private var resultsView: some View {
-        VStack(spacing: 0) {
-            // Success Header
-            VStack(spacing: 12) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 50))
-                    .foregroundColor(.green)
-                
-                Text("Organization Complete!")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                
-                HStack(spacing: 16) {
-                    VStack(spacing: 4) {
-                        Text("\(organizedCount)")
-                            .font(.title)
-                            .fontWeight(.bold)
-                            .foregroundColor(.blue)
-                        Text("Organized")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    VStack(spacing: 4) {
-                        Text("\(patternMatchCount)")
-                            .font(.title)
-                            .fontWeight(.bold)
-                            .foregroundColor(.purple)
-                        Text("Patterns")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-            .padding()
-            .frame(maxWidth: .infinity)
-            .background(Color(.systemGray6))
-            
-            // Categorization Results
-            List {
-                Section {
-                    ForEach(groupResultsByCategory(), id: \.category) { group in
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Image(systemName: "folder.fill")
-                                    .foregroundColor(.orange)
-                                
-                                Text(group.category)
-                                    .font(.headline)
-                                
-                                Spacer()
-                                
-                                Text("\(group.count)")
-                                    .font(.caption)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 4)
-                                    .background(Color.blue)
-                                    .cornerRadius(12)
-                            }
-                            
-                            if let sample = group.sample {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text("Example:")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    
-                                    // Show pattern match prominently if detected
-                                    if let pattern = sample.patternMatched {
-                                        HStack(spacing: 6) {
-                                            Image(systemName: "brain.head.profile")
-                                                .font(.caption)
-                                                .foregroundColor(.purple)
-                                            
-                                            Text("Pattern: \"\(pattern)\"")
-                                                .font(.caption)
-                                                .foregroundColor(.purple)
-                                                .fontWeight(.semibold)
-                                        }
-                                        .padding(.vertical, 4)
-                                        .padding(.horizontal, 8)
-                                        .background(Color.purple.opacity(0.1))
-                                        .cornerRadius(6)
-                                    }
-                                    
-                                    HStack(spacing: 4) {
-                                        Image(systemName: sample.patternMatched != nil ? "checkmark.circle.fill" : "sparkles")
-                                            .font(.caption2)
-                                            .foregroundColor(sample.patternMatched != nil ? .green : .blue)
-                                        
-                                        Text(sample.reasoning)
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                            .italic()
-                                    }
-                                    
-                                    if !sample.matchedKeywords.isEmpty && sample.patternMatched == nil {
-                                        ScrollView(.horizontal, showsIndicators: false) {
-                                            HStack(spacing: 4) {
-                                                ForEach(sample.matchedKeywords.prefix(5), id: \.self) { keyword in
-                                                    Text(keyword)
-                                                        .font(.caption2)
-                                                        .foregroundColor(.blue)
-                                                        .padding(.horizontal, 6)
-                                                        .padding(.vertical, 2)
-                                                        .background(Color.blue.opacity(0.1))
-                                                        .cornerRadius(4)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                .padding(.top, 4)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                } header: {
-                    Text("Categorization Summary")
-                }
-            }
-            .listStyle(.insetGrouped)
-        }
-    }
-    
-    // MARK: - Helper Properties
-    
-    private var patternMatchCount: Int {
-        categorizationResults.filter { $0.patternMatched != nil }.count
-    }
-    
-    // MARK: - Helper Methods
-    
-    private func addCategory() {
-        let trimmed = newCategory.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
+    private func assignJokeToFolder(_ joke: Joke, category: String) {
+        var targetFolder = folders.first(where: { $0.name == category })
         
-        if !categories.contains(trimmed) {
-            categories.append(trimmed)
-            AutoOrganizeService.saveUserCategories(categories)
-        }
-        newCategory = ""
-    }
-    
-    private func removeCategory(_ category: String) {
-        categories.removeAll { $0 == category }
-        AutoOrganizeService.saveUserCategories(categories)
-    }
-    
-    private func moveCategories(from source: IndexSet, to destination: Int) {
-        categories.move(fromOffsets: source, toOffset: destination)
-        AutoOrganizeService.saveUserCategories(categories)
-    }
-    
-    private func organizeAllJokes() {
-        isOrganizing = true
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            let result = AutoOrganizeService.organizeAllJokes(
-                jokes: jokes,
-                categories: categories,
-                folders: folders,
-                modelContext: modelContext
-            )
-            
-            organizedCount = result.count
-            categorizationResults = result.results
-            
-            isOrganizing = false
-            showingResults = true
-        }
-    }
-    
-    private func groupResultsByCategory() -> [(category: String, count: Int, sample: CategorizationResult?)] {
-        var groups: [String: [CategorizationResult]] = [:]
-        
-        for result in categorizationResults {
-            groups[result.category, default: []].append(result)
+        if targetFolder == nil {
+            targetFolder = JokeFolder(name: category)
+            modelContext.insert(targetFolder!)
         }
         
-        return groups.map { (category: $0.key, count: $0.value.count, sample: $0.value.first) }
-            .sorted { $0.count > $1.count }
+        joke.folder = targetFolder
+        try? modelContext.save()
     }
 }
 
-#Preview {
-    AutoOrganizeView()
-        .modelContainer(for: [Joke.self, JokeFolder.self], inMemory: true)
+// MARK: - Joke Organization Card
+
+struct JokeOrganizationCard: View {
+    let joke: Joke
+    let onTap: () -> Void
+    let onAccept: (String) -> Void
+    
+    var topSuggestion: CategoryMatch? {
+        joke.categorizationResults.first
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(joke.title)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .lineLimit(2)
+            
+            Text(joke.content)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .lineLimit(3)
+            
+            if let suggestion = topSuggestion {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(suggestion.category)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.blue)
+                            
+                            Text(suggestion.reasoning)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text(suggestion.confidencePercent)
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(confidenceColor(suggestion.confidence))
+                                .cornerRadius(6)
+                        }
+                    }
+                    
+                    HStack(spacing: 8) {
+                        Button(action: { onAccept(suggestion.category) }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "checkmark.circle")
+                                Text("Accept")
+                            }
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.green)
+                            .cornerRadius(6)
+                        }
+                        
+                        Button(action: onTap) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "pencil")
+                                Text("Choose")
+                            }
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.blue)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(6)
+                        }
+                        
+                        Spacer()
+                    }
+                }
+                .padding(12)
+                .background(Color.blue.opacity(0.05))
+                .cornerRadius(8)
+            }
+        }
+        .padding()
+        .background(Color(UIColor.systemGray6))
+        .cornerRadius(12)
+    }
+    
+    private func confidenceColor(_ confidence: Double) -> Color {
+        switch confidence {
+        case 0.8...:
+            return .green
+        case 0.6..<0.8:
+            return .blue
+        case 0.4..<0.6:
+            return .orange
+        default:
+            return .gray
+        }
+    }
+}
+
+// MARK: - Category Suggestion Detail
+
+struct CategorySuggestionDetail: View {
+    @Environment(\.dismiss) var dismiss
+    
+    let joke: Joke
+    let onSelectCategory: (String) -> Void
+    
+    var body: some View {
+        NavigationStack {
+            VStack {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(joke.title)
+                        .font(.headline)
+                        .fontWeight(.bold)
+                    
+                    Text(joke.content)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+                .background(Color(UIColor.systemGray6))
+                .cornerRadius(12)
+                .padding()
+                
+                Text("Smart Suggestions")
+                    .font(.headline)
+                    .padding(.horizontal)
+                
+                ScrollView {
+                    VStack(spacing: 12) {
+                        ForEach(joke.categorizationResults, id: \.category) { match in
+                            Button(action: { onSelectCategory(match.category) }) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(match.category)
+                                                .font(.headline)
+                                                .foregroundColor(.primary)
+                                            
+                                            Text(match.reasoning)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        VStack(alignment: .trailing) {
+                                            Text(match.confidencePercent)
+                                                .font(.caption)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.white)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(confidenceColor(match.confidence))
+                                                .cornerRadius(6)
+                                        }
+                                    }
+                                    
+                                    if !match.matchedKeywords.isEmpty {
+                                        Wrap(match.matchedKeywords) { keyword in
+                                            Text(keyword)
+                                                .font(.caption)
+                                                .foregroundColor(.blue)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(Color.blue.opacity(0.1))
+                                                .cornerRadius(4)
+                                        }
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding()
+                                .background(Color(UIColor.systemGray6))
+                                .cornerRadius(8)
+                            }
+                        }
+                    }
+                    .padding()
+                }
+                
+                Spacer()
+            }
+            .navigationTitle("Choose Category")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    private func confidenceColor(_ confidence: Double) -> Color {
+        switch confidence {
+        case 0.8...:
+            return .green
+        case 0.6..<0.8:
+            return .blue
+        case 0.4..<0.6:
+            return .orange
+        default:
+            return .gray
+        }
+    }
+}
+
+// MARK: - Wrap Helper for Keyword Display
+
+struct Wrap<Content: View>: View {
+    let items: [String]
+    let content: (String) -> Content
+    
+    init(_ items: [String], @ViewBuilder content: @escaping (String) -> Content) {
+        self.items = items
+        self.content = content
+    }
+    
+    var body: some View {
+        var width: CGFloat = .zero
+        var height: CGFloat = .zero
+        
+        return ZStack(alignment: .topLeading) {
+            ForEach(items, id: \.self) { item in
+                content(item)
+                    .alignmentGuide(.leading) { dimension in
+                        if abs(width - dimension.width) > UIScreen.main.bounds.width - 32 {
+                            width = 0
+                            height -= dimension.height
+                        }
+                        let result = width
+                        width -= dimension.width
+                        return result
+                    }
+                    .alignmentGuide(.top) { _ in
+                        let result = height
+                        return result
+                    }
+            }
+        }
+    }
 }
