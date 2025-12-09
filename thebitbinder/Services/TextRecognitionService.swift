@@ -165,46 +165,63 @@ class TextRecognitionService {
     static func generateTitleFromJoke(_ jokeContent: String) -> (title: String, isValid: Bool) {
         let trimmed = jokeContent.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        // Minimum length check - avoid incomplete jokes
-        let minimumLength = 15
+        // Minimum length check - jokes should be at least 10 characters
+        let minimumLength = 10
         if trimmed.count < minimumLength {
             print("⚠️ VALIDATION: Joke too short (\(trimmed.count) chars): \(trimmed.prefix(50))...")
             return (title: "", isValid: false)
         }
         
-        // Check for incomplete sentences (ends with only partial punctuation or no punctuation)
+        // Check if joke looks incomplete (but be more lenient)
+        // Only reject if it's CLEARLY incomplete (very short AND no punctuation)
         let lastChar = trimmed.last ?? " "
-        let endsWithoutPunctuation = !trimmed.hasSuffix(".") && !trimmed.hasSuffix("!") && !trimmed.hasSuffix("?")
-        let looksIncomplete = trimmed.contains("...") || trimmed.contains("…") || 
-                             (lastChar.isLetter && endsWithoutPunctuation && trimmed.count < 100)
+        let hasSomePunctuation = trimmed.contains(".") || trimmed.contains("!") || trimmed.contains("?") ||
+                                 trimmed.contains(",") || trimmed.contains(";")
+        let endsAbruptly = lastChar.isLetter && trimmed.count < 30 && !hasSomePunctuation
         
-        if looksIncomplete {
-            print("⚠️ VALIDATION: Incomplete joke detected: \(trimmed.prefix(50))...")
+        if endsAbruptly {
+            print("⚠️ VALIDATION: Likely incomplete (\(trimmed.count) chars, no punctuation): \(trimmed.prefix(50))...")
             return (title: "", isValid: false)
         }
         
-        // Generate title from first sentence or first 50 characters
+        // Check for obvious fragments (single words, numbers only, etc.)
+        let words = trimmed.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+        if words.count < 3 && trimmed.count < 20 {
+            print("⚠️ VALIDATION: Too few words (\(words.count)): \(trimmed)")
+            return (title: "", isValid: false)
+        }
+        
+        // Generate title from first sentence or first 60 characters
         var title = ""
         let endMarkers = CharacterSet(charactersIn: ".!?")
         
         if let firstSentenceEnd = trimmed.rangeOfCharacter(from: endMarkers) {
+            // Use first sentence as title
             title = String(trimmed[trimmed.startIndex..<firstSentenceEnd.lowerBound]).trimmingCharacters(in: .whitespaces)
+            // If first sentence is too short, use more
+            if title.count < 10 && trimmed.count > title.count + 5 {
+                title = String(trimmed.prefix(60)).trimmingCharacters(in: .whitespaces)
+            }
         } else {
-            title = String(trimmed.prefix(50)).trimmingCharacters(in: .whitespaces)
+            // No sentence ending found, use first 60 chars
+            title = String(trimmed.prefix(60)).trimmingCharacters(in: .whitespaces)
         }
         
-        // Ensure title is not empty and is reasonable
+        // Remove trailing ellipsis or commas from title
+        title = title.trimmingCharacters(in: CharacterSet(charactersIn: ".,…"))
+        
+        // Ensure title is reasonable length
         if title.isEmpty || title.count < 5 {
-            title = String(trimmed.prefix(50)).trimmingCharacters(in: .whitespaces)
+            title = String(trimmed.prefix(60)).trimmingCharacters(in: .whitespaces)
         }
         
-        // Fallback: if still too short or doesn't seem like a title, mark as invalid
-        if title.count < 5 {
-            print("⚠️ VALIDATION: Title too short: \(title)")
+        // Final validation
+        if title.count < 3 {
+            print("⚠️ VALIDATION: Generated title too short: '\(title)'")
             return (title: "", isValid: false)
         }
         
-        print("✅ VALIDATION: Valid joke with title: \(title.prefix(40))...")
+        print("✅ VALIDATION: Valid joke (\(trimmed.count) chars) with title: \(title.prefix(40))...")
         return (title: title, isValid: true)
     }
     

@@ -308,7 +308,11 @@ struct JokesView: View {
                                         let joke = Joke(content: jokeText, title: title, folder: selectedFolder)
                                         modelContext.insert(joke)
                                         totalAdded += 1
-                                        print("✅ IMAGE: Added joke with title: \(title.prefix(40))...")
+                                        print("✅ IMAGE: Added joke #\(totalAdded) (\(jokeText.count) chars)")
+                                        print("   Title: \(title.prefix(40))...")
+                                        print("   Content: \(jokeText.prefix(100))...")
+                                    } else {
+                                        print("⚠️ IMAGE: Rejected invalid joke (\(jokeText.count) chars): \(jokeText.prefix(60))...")
                                     }
                                 }
                             }

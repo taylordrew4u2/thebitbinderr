@@ -64,7 +64,6 @@ class AutoOrganizeService {
         "Irony": ["ironically", "turns out", "of course the"],
         "One-Liner": ["short", "quick", "line"],
         "Story": ["long story", "cut to", "flash forward"],
-        "Roast": ["look at you", "you're so"],
         "Blue": ["explicit", "naughty", "bedroom"],
         "Topical": ["today", "headline", "trending"],
         "Crowd": ["sir", "ma'am", "front row"]
