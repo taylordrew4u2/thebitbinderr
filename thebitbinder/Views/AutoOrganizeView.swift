@@ -20,6 +20,7 @@ struct AutoOrganizeView: View {
     @State private var organizationStats: (organized: Int, suggested: Int) = (0, 0)
     @State private var selectedJoke: Joke?
     @State private var showCategoryDetails = false
+    @State private var customFolderName: String = ""
     
     var unorganizedJokes: [Joke] {
         jokes.filter { $0.folder == nil }
@@ -185,20 +186,11 @@ struct AutoOrganizeView: View {
         
         if targetFolder == nil {
             targetFolder = JokeFolder(name: category)
-            if let newFolder = targetFolder {
-                modelContext.insert(newFolder)
-            }
+            modelContext.insert(targetFolder!)
         }
         
         joke.folder = targetFolder
-        
-        // Ensure save is called
-        do {
-            try modelContext.save()
-            print("✅ Assigned '\(joke.title)' to '\(category)'")
-        } catch {
-            print("❌ Error assigning joke to folder: \(error)")
-        }
+        try? modelContext.save()
     }
 }
 

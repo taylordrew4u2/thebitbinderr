@@ -10,64 +10,27 @@ import SwiftData
 
 class AutoOrganizeService {
     
-    // MARK: - Configuration
-    
     private static let confidenceThresholdForAutoOrganize: Double = 0.5
     private static let confidenceThresholdForSuggestion: Double = 0.3
     private static let multiCategoryThreshold: Double = 0.4
     
-    // MARK: - Smart Auto-Organize Categories with Weighted Keywords
-    
+    // Comedy Style Categories with Signature Keywords
     private static let categories: [String: CategoryKeywords] = [
-        "Technology & Programming": CategoryKeywords(
-            keywords: [
-                ("programmer", 1.0), ("developer", 1.0), ("coding", 1.0), ("software", 0.9),
-                ("hardware", 0.8), ("computer", 0.8), ("code", 1.0), ("bug", 0.9),
-                ("debug", 0.9), ("database", 0.8), ("server", 0.7), ("network", 0.7),
-                ("internet", 0.6), ("wifi", 0.5), ("bluetooth", 0.5), ("app", 0.8),
-                ("algorithm", 1.0), ("function", 0.7), ("variable", 0.8), ("java", 1.0),
-                ("python", 1.0), ("swift", 1.0), ("javascript", 1.0), ("html", 0.9),
-                ("css", 0.9), ("sql", 0.9), ("api", 0.9), ("json", 0.8),
-                ("tech", 0.7), ("gadget", 0.6), ("robot", 0.8), ("ai", 1.0),
-                ("machine learning", 1.0), ("bitcoin", 0.7), ("crypto", 0.7),
-                ("data science", 0.9), ("cloud", 0.7)
-            ],
-            weight: 1.0
-        ),
-        "Relationships & Dating": CategoryKeywords(
-            keywords: [
-                ("boyfriend", 1.0), ("girlfriend", 1.0), ("husband", 0.9), ("wife", 0.9),
-                ("marriage", 0.9), ("wedding", 0.8), ("divorce", 0.9), ("date", 0.7),
-                ("dating", 1.0), ("love", 0.9), ("romance", 0.9), ("kiss", 0.8),
-                ("relationship", 1.0), ("partner", 0.8), ("spouse", 0.8), ("breakup", 0.9),
-                ("cheating", 0.9), ("flirt", 0.8), ("crush", 0.8), ("romantic", 0.8),
-                ("dating app", 0.9), ("single", 0.6), ("lonely", 0.6)
-            ],
-            weight: 1.0
-        ),
-        "Work & Office": CategoryKeywords(
-            keywords: [
-                ("boss", 1.0), ("employee", 0.9), ("manager", 0.9), ("office", 0.9),
-                ("work", 0.8), ("job", 0.9), ("interview", 0.8), ("resume", 0.8),
-                ("meeting", 0.7), ("deadline", 0.7), ("project", 0.7), ("coworker", 0.9),
-                ("colleague", 0.8), ("fired", 0.9), ("quit", 0.8), ("promotion", 0.8),
-                ("salary", 0.8), ("paycheck", 0.8), ("company", 0.7), ("business", 0.6),
-                ("workplace", 0.8), ("cubicle", 0.8)
-            ],
-            weight: 1.0
-        ),
-        "Animals": CategoryKeywords(keywords: [("dog", 1.0), ("cat", 1.0), ("bird", 0.9), ("fish", 0.8), ("snake", 0.9), ("bear", 0.9), ("lion", 0.9), ("tiger", 0.9), ("elephant", 0.8), ("monkey", 0.8), ("horse", 0.8), ("cow", 0.8), ("chicken", 0.8), ("pig", 0.8), ("duck", 0.8), ("penguin", 0.8), ("wolf", 0.8), ("fox", 0.8), ("deer", 0.8), ("rabbit", 0.8), ("mouse", 0.8), ("rat", 0.8), ("squirrel", 0.8), ("animal", 0.6), ("pet", 0.7), ("creature", 0.6), ("paws", 0.7)], weight: 0.95),
-        "Food & Cooking": CategoryKeywords(keywords: [("food", 0.8), ("eat", 0.8), ("eating", 0.8), ("dinner", 0.9), ("lunch", 0.9), ("breakfast", 0.9), ("cook", 0.9), ("cooking", 0.9), ("recipe", 0.8), ("restaurant", 0.8), ("pizza", 1.0), ("burger", 1.0), ("steak", 0.9), ("chicken", 0.6), ("fish", 0.6), ("vegetable", 0.7), ("fruit", 0.7), ("dessert", 0.9), ("cake", 0.9), ("bread", 0.8), ("pasta", 0.9), ("rice", 0.7), ("soup", 0.8), ("salad", 0.8), ("drink", 0.6), ("beer", 0.8), ("wine", 0.8), ("coffee", 0.8), ("tea", 0.7), ("chocolate", 0.8), ("candy", 0.8), ("nutrition", 0.6), ("chef", 0.8), ("kitchen", 0.7), ("meal", 0.8)], weight: 0.95),
-        "Travel & Places": CategoryKeywords(keywords: [("travel", 1.0), ("trip", 0.9), ("vacation", 0.9), ("plane", 0.8), ("airport", 0.8), ("hotel", 0.8), ("beach", 0.8), ("mountain", 0.8), ("country", 0.6), ("city", 0.6), ("paris", 0.9), ("london", 0.9), ("new york", 0.9), ("tourist", 0.8), ("passport", 0.8), ("flight", 0.8), ("adventure", 0.7), ("explore", 0.7), ("visiting", 0.7), ("visited", 0.7), ("road trip", 0.9), ("highway", 0.7), ("destination", 0.7), ("tour", 0.8)], weight: 0.95),
-        "School & Education": CategoryKeywords(keywords: [("school", 1.0), ("college", 0.9), ("university", 0.9), ("student", 0.9), ("teacher", 0.9), ("professor", 0.9), ("class", 0.8), ("test", 0.8), ("exam", 0.9), ("homework", 0.9), ("grade", 0.9), ("degree", 0.8), ("education", 0.8), ("study", 0.7), ("learning", 0.7), ("high school", 1.0), ("middle school", 1.0), ("elementary", 0.9), ("principal", 0.8), ("tuition", 0.8), ("textbook", 0.8), ("campus", 0.8)], weight: 0.95),
-        "Sports": CategoryKeywords(keywords: [("sport", 0.8), ("game", 0.7), ("football", 1.0), ("basketball", 1.0), ("soccer", 1.0), ("baseball", 1.0), ("hockey", 1.0), ("tennis", 0.9), ("golf", 0.9), ("running", 0.7), ("swimming", 0.7), ("boxing", 0.9), ("wrestling", 0.8), ("yoga", 0.7), ("gym", 0.7), ("workout", 0.7), ("exercise", 0.6), ("coach", 0.8), ("team", 0.6), ("player", 0.7), ("match", 0.6), ("score", 0.5), ("win", 0.5), ("lose", 0.5), ("race", 0.7), ("athlete", 0.8), ("championship", 0.8)], weight: 0.95),
-        "Family & Kids": CategoryKeywords(keywords: [("mom", 1.0), ("dad", 1.0), ("mother", 0.9), ("father", 0.9), ("brother", 0.9), ("sister", 0.9), ("son", 0.9), ("daughter", 0.9), ("kid", 0.9), ("kids", 0.9), ("child", 0.8), ("children", 0.8), ("family", 0.8), ("parent", 0.8), ("grandma", 0.9), ("grandpa", 0.9), ("uncle", 0.8), ("aunt", 0.8), ("cousin", 0.8), ("baby", 0.8), ("toddler", 0.8), ("teenager", 0.8), ("sibling", 0.8)], weight: 0.95),
-        "Health & Medicine": CategoryKeywords(keywords: [("doctor", 1.0), ("hospital", 0.9), ("medicine", 0.9), ("sick", 0.9), ("illness", 0.9), ("disease", 0.9), ("health", 0.8), ("virus", 0.8), ("vaccine", 0.8), ("nurse", 0.9), ("surgery", 0.8), ("pain", 0.7), ("injury", 0.8), ("broken", 0.7), ("fracture", 0.8), ("cancer", 0.8), ("mental health", 0.9), ("therapy", 0.8), ("therapist", 0.8), ("anxiety", 0.8), ("depression", 0.8), ("diet", 0.6), ("fitness", 0.6), ("clinic", 0.8)], weight: 0.95),
-        "Money & Finance": CategoryKeywords(keywords: [("money", 1.0), ("cash", 0.9), ("dollar", 0.8), ("payment", 0.8), ("bill", 0.7), ("expensive", 0.7), ("cheap", 0.7), ("price", 0.7), ("cost", 0.7), ("rich", 0.8), ("poor", 0.8), ("broke", 0.8), ("bank", 0.8), ("account", 0.7), ("credit", 0.7), ("debt", 0.8), ("loan", 0.8), ("investment", 0.8), ("stock", 0.8), ("income", 0.8), ("spend", 0.6), ("save", 0.6), ("budget", 0.8), ("tax", 0.8), ("salary", 0.8), ("financial", 0.7)], weight: 0.95),
-        "Dark Humor": CategoryKeywords(keywords: [("death", 0.9), ("kill", 0.9), ("murder", 0.9), ("die", 0.8), ("dead", 0.8), ("suicide", 1.0), ("funeral", 0.8), ("ghost", 0.7), ("zombie", 0.8), ("dark", 0.6), ("evil", 0.7), ("hell", 0.7), ("devil", 0.7), ("curse", 0.7), ("haunted", 0.7), ("scary", 0.6), ("horror", 0.8), ("blood", 0.8), ("suffering", 0.8), ("torture", 0.8), ("violence", 0.8), ("crime", 0.7), ("criminal", 0.7)], weight: 0.95)
+        "Puns": CategoryKeywords(keywords: [("wordplay", 1.0), ("pun", 1.0), ("play on words", 1.0), ("double meaning", 0.9), ("homophone", 1.0), ("word", 0.7), ("like", 0.6), ("flies", 0.7), ("fruit", 0.7), ("arrow", 0.6), ("time", 0.5), ("banana", 0.6)], weight: 1.0),
+        "Roasts": CategoryKeywords(keywords: [("roast", 1.0), ("insult", 0.9), ("making fun", 0.9), ("you're so", 0.8), ("ugly", 0.8), ("stupid", 0.8), ("dumb", 0.8), ("idiot", 0.8), ("laugh", 0.6), ("burn", 0.7), ("own", 0.7), ("destroy", 0.6)], weight: 1.0),
+        "One-Liners": CategoryKeywords(keywords: [("one liner", 1.0), ("quick", 0.7), ("short", 0.6), ("wife", 0.5), ("told", 0.5), ("eyebrows", 0.7), ("surprised", 0.6), ("simple joke", 0.8)], weight: 1.0),
+        "Knock-Knock": CategoryKeywords(keywords: [("knock knock", 1.0), ("who's there", 1.0), ("who is there", 1.0), ("boo", 0.8), ("interrupting", 0.9), ("knock", 0.7)], weight: 1.0),
+        "Dad Jokes": CategoryKeywords(keywords: [("dad joke", 1.0), ("dad", 0.7), ("terrible", 0.6), ("corny", 0.8), ("stupid", 0.6), ("field", 0.7), ("scarecrow", 0.7), ("outstanding", 0.6), ("award", 0.5)], weight: 1.0),
+        "Sarcasm": CategoryKeywords(keywords: [("sarcasm", 1.0), ("sarcastic", 1.0), ("right", 0.6), ("sure", 0.6), ("great", 0.5), ("wonderful", 0.5), ("fantastic", 0.5), ("oh great", 0.8), ("just what i wanted", 0.8), ("obviously", 0.6), ("yeah right", 0.8)], weight: 1.0),
+        "Irony": CategoryKeywords(keywords: [("irony", 1.0), ("ironic", 1.0), ("weird", 0.7), ("unexpected", 0.7), ("opposite", 0.7), ("fire station", 0.9), ("burned down", 0.8), ("paradox", 0.8)], weight: 1.0),
+        "Satire": CategoryKeywords(keywords: [("satire", 1.0), ("satirical", 1.0), ("making fun of society", 1.0), ("mock", 0.8), ("social commentary", 0.9), ("government", 0.6), ("politics", 0.7), ("system", 0.6), ("daily show", 0.8)], weight: 1.0),
+        "Dark Humor": CategoryKeywords(keywords: [("death", 0.9), ("kill", 0.9), ("murder", 0.9), ("die", 0.8), ("dead", 0.8), ("suicide", 1.0), ("funeral", 0.8), ("dark", 0.8), ("tragedy", 0.9), ("blast", 0.7), ("bomber", 0.8), ("disturbing", 0.8)], weight: 1.0),
+        "Observational": CategoryKeywords(keywords: [("why do we", 1.0), ("why does", 0.9), ("have you ever", 0.8), ("observe", 0.8), ("notice", 0.8), ("everyday", 0.7), ("driveway", 0.8), ("parkway", 0.8), ("parking", 0.7), ("drive", 0.6)], weight: 1.0),
+        "Anecdotal": CategoryKeywords(keywords: [("one time", 1.0), ("so there i was", 1.0), ("story", 0.8), ("true story", 0.9), ("happened to me", 0.9), ("my friend", 0.7), ("drunk", 0.7), ("peed", 0.8), ("long story", 0.7), ("reminds me of", 0.6)], weight: 1.0),
+        "Self-Deprecating": CategoryKeywords(keywords: [("i'm not", 1.0), ("i'm so", 0.9), ("myself", 0.7), ("making fun of myself", 0.9), ("bad at", 0.8), ("terrible", 0.7), ("not good at", 0.8), ("loser", 0.7), ("stupid", 0.6), ("ugly", 0.6)], weight: 1.0),
+        "Anti-Jokes": CategoryKeywords(keywords: [("anti joke", 1.0), ("not funny", 0.8), ("wasn't really a joke", 0.9), ("chicken cross the road", 0.9), ("other side", 0.8), ("obvious", 0.7), ("subvert expectations", 0.8)], weight: 1.0),
+        "Riddles": CategoryKeywords(keywords: [("riddle", 1.0), ("what has", 1.0), ("clever answer", 0.9), ("four legs", 0.8), ("morning", 0.6), ("afternoon", 0.6), ("evening", 0.6), ("man", 0.5), ("sphinx", 0.8), ("puzzle", 0.8)], weight: 1.0)
     ]
-    
-    // MARK: - Main Categorization Method
     
     static func categorizeJoke(_ joke: Joke) -> [CategoryMatch] {
         let content = (joke.title + " " + joke.content).lowercased()
@@ -75,21 +38,11 @@ class AutoOrganizeService {
         
         for (categoryName, keywords) in categories {
             let confidence = calculateConfidence(for: content, with: keywords, jokeLength: joke.content.count)
-            
             if confidence >= confidenceThresholdForSuggestion {
                 let matchedKeywords = keywords.keywords.filter { content.containsWord($0.0) }.map { $0.0 }
                 let reasoning = generateReasoning(category: categoryName, matchCount: matchedKeywords.count, confidence: confidence)
                 
-                matches.append(CategoryMatch(
-                    category: categoryName,
-                    confidence: confidence,
-                    reasoning: reasoning,
-                    matchedKeywords: matchedKeywords,
-                    styleTags: [],
-                    emotionalTone: nil,
-                    craftSignals: [],
-                    structureScore: nil
-                ))
+                matches.append(CategoryMatch(category: categoryName, confidence: confidence, reasoning: reasoning, matchedKeywords: matchedKeywords, styleTags: [], emotionalTone: nil, craftSignals: [], structureScore: nil))
             }
         }
         
@@ -114,14 +67,12 @@ class AutoOrganizeService {
         for (categoryName, keywordSet) in categories {
             var score: Double = 0
             var matchCount = 0
-            
             for (keyword, weight) in keywordSet.keywords {
                 if text.containsWord(keyword) {
                     score += weight
                     matchCount += 1
                 }
             }
-            
             if matchCount > 0 {
                 let normalizedScore = score / Double(keywordSet.keywords.count) * keywordSet.weight
                 if normalizedScore > bestScore && normalizedScore >= confidenceThresholdForSuggestion {
@@ -134,21 +85,17 @@ class AutoOrganizeService {
         return bestCategory
     }
     
-    static func getBestCategory(_ joke: Joke) -> String {
+    static func getBestCategory(_ joke: Joke) -> String? {
         let matches = categorizeJoke(joke)
-        if let topMatch = matches.first, topMatch.confidence >= confidenceThresholdForSuggestion {
+        if let topMatch = matches.first, topMatch.confidence >= confidenceThresholdForAutoOrganize {
             return topMatch.category
         }
-        return "Other"
+        return nil
     }
     
-    static func autoOrganizeJokes(
-        unorganizedJokes: [Joke],
-        existingFolders: [JokeFolder],
-        modelContext: ModelContext,
-        completion: @escaping (Int, Int) -> Void
-    ) {
-        var organized = 0
+    static func autoOrganizeJokes(unorganizedJokes: [Joke], existingFolders: [JokeFolder], modelContext: ModelContext, completion: @escaping (Int, Int) -> Void) {
+        var organizedCount = 0
+        var suggestedCount = 0
         var folderMap: [String: JokeFolder] = [:]
         
         for folder in existingFolders {
@@ -156,44 +103,43 @@ class AutoOrganizeService {
         }
         
         for joke in unorganizedJokes {
-            let categoryName = getBestCategory(joke)
-            
-            var targetFolder = folderMap[categoryName]
-            if targetFolder == nil {
-                targetFolder = JokeFolder(name: categoryName)
-                if let folder = targetFolder {
-                    modelContext.insert(folder)
-                    folderMap[categoryName] = folder
-                    print("✅ Created folder: \(categoryName)")
+            if let categoryName = getBestCategory(joke) {
+                var targetFolder = folderMap[categoryName]
+                if targetFolder == nil {
+                    targetFolder = JokeFolder(name: categoryName)
+                    modelContext.insert(targetFolder!)
+                    folderMap[categoryName] = targetFolder
+                    print("✅ Created: \(categoryName)")
+                }
+                joke.folder = targetFolder
+                organizedCount += 1
+                print("✅ Organized '\(joke.title)' → '\(categoryName)'")
+            } else {
+                let matches = joke.categorizationResults
+                if !matches.isEmpty {
+                    print("⚠️ Suggested '\(joke.title)' → '\(matches.first?.category ?? "Unknown")'")
+                    suggestedCount += 1
                 }
             }
-            
-            joke.folder = targetFolder
-            organized += 1
-            print("✅ Organized '\(joke.title)' → '\(categoryName)'")
         }
         
         _ = ensureRecentlyAddedFolder(existingFolders: existingFolders, modelContext: modelContext)
         
         do {
             try modelContext.save()
-            print("✅ Saved \(organized) organized jokes")
+            print("✅ Saved \(organizedCount) jokes")
         } catch {
-            print("❌ Save failed: \(error)")
+            print("❌ Save error: \(error)")
         }
         
-        completion(organized, 0)
+        completion(organizedCount, suggestedCount)
     }
     
     @discardableResult
-    static func ensureRecentlyAddedFolder(
-        existingFolders: [JokeFolder],
-        modelContext: ModelContext
-    ) -> JokeFolder {
+    static func ensureRecentlyAddedFolder(existingFolders: [JokeFolder], modelContext: ModelContext) -> JokeFolder {
         if let recentFolder = existingFolders.first(where: { $0.name == "Recently Added" }) {
             return recentFolder
         }
-        
         let recentFolder = JokeFolder(name: "Recently Added")
         modelContext.insert(recentFolder)
         return recentFolder
@@ -203,30 +149,37 @@ class AutoOrganizeService {
         return Array(categories.keys).sorted()
     }
     
-    // MARK: - Helpers
+    static func assignJokeToFolder(_ joke: Joke, folderName: String, modelContext: ModelContext) {
+        do {
+            let folders = try modelContext.fetch(FetchDescriptor<JokeFolder>())
+            var targetFolder = folders.first(where: { $0.name == folderName })
+            if targetFolder == nil {
+                targetFolder = JokeFolder(name: folderName)
+                modelContext.insert(targetFolder!)
+            }
+            joke.folder = targetFolder
+            try modelContext.save()
+            print("✅ Assigned '\(joke.title)' → '\(folderName)'")
+        } catch {
+            print("❌ Error: \(error)")
+        }
+    }
     
     private static func calculateConfidence(for content: String, with keywordSet: CategoryKeywords, jokeLength: Int) -> Double {
         var totalScore: Double = 0
         var matchCount = 0
-        
         for (keyword, weight) in keywordSet.keywords {
             if content.containsWord(keyword) {
                 totalScore += weight
                 matchCount += 1
             }
         }
-        
         if matchCount == 0 { return 0 }
-        
         var confidence = min(totalScore / Double(keywordSet.keywords.count), 1.0)
-        if matchCount > 1 {
-            confidence *= (1.0 + Double(matchCount - 1) * 0.1)
-        }
-        
+        if matchCount > 1 { confidence *= (1.0 + Double(matchCount - 1) * 0.1) }
         let lengthBonus = min(Double(jokeLength) / 500.0, 0.2)
         confidence *= (1.0 + lengthBonus)
         confidence *= keywordSet.weight
-        
         return min(confidence, 1.0)
     }
     
