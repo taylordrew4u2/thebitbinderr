@@ -9,42 +9,31 @@ import UIKit
 import Vision
 import VisionKit
 
-// MARK: - Thought Validation Result
-struct ThoughtValidationResult {
-    let isComplete: Bool
-    let missingComponents: [String]
-    let confidence: Double
-    let suggestedReconstruction: String?
-    let thoughtType: ThoughtType
-    let boundaryAnalysis: ThoughtBoundaryAnalysis
-}
-
-enum ThoughtType {
-    case questionAnswer
-    case narrative
-    case oneLiner
-    case callback
-    case fragment
-    case unknown
-}
-
-struct ThoughtBoundaryAnalysis {
-    let startsCleanly: Bool
-    let endsCleanly: Bool
-    let hasSetup: Bool
-    let hasPunchline: Bool
-    let topicShiftDetected: Bool
-    let audienceCuesFound: [String]
-}
-
-struct CoherenceScore {
-    let grammarScore: Double
-    let structureScore: Double
-    let punctuationScore: Double
-    let lengthScore: Double
-    let overallScore: Double
+// MARK: - Joke Import Candidate for User Validation
+struct JokeImportCandidate: Identifiable {
+    let id = UUID()
+    var content: String
+    var suggestedTitle: String
+    var isComplete: Bool
+    var confidence: Double
+    var issues: [String]
+    var suggestedFix: String?
+    var userApproved: Bool = false
+    var userEdited: Bool = false
     
-    var isAcceptable: Bool { overallScore >= 0.7 }
+    var needsReview: Bool {
+        return !isComplete || confidence < 0.8 || !issues.isEmpty
+    }
+    
+    var statusDescription: String {
+        if isComplete && confidence >= 0.8 {
+            return "✅ Complete joke detected"
+        } else if confidence >= 0.6 {
+            return "⚠️ Possibly incomplete - please verify"
+        } else {
+            return "❌ May be missing parts - please review"
+        }
+    }
 }
 
 class TextRecognitionService {
