@@ -10,40 +10,89 @@ import SwiftData
 
 class AutoOrganizeService {
     
-    // MARK: - Default Categories
+    // MARK: - Fewer Default Categories (6 core + Other)
     
     static let defaultCategories = [
         "Relationships",
-        "Work & Career",
-        "Food & Dining",
-        "Travel",
+        "Work",
         "Family",
         "Observational",
         "Dark Humor",
-        "Sports",
-        "Technology",
-        "Health",
-        "Money",
-        "School",
-        "Animals",
         "Other"
     ]
     
-    // Keywords for each category (simple matching)
+    // MARK: - Smart Keywords (expanded for better matching)
+    
     private static let categoryKeywords: [String: [String]] = [
-        "Relationships": ["boyfriend", "girlfriend", "husband", "wife", "marriage", "dating", "love", "romance", "breakup", "divorce", "relationship", "partner", "ex", "date", "kiss", "wedding"],
-        "Work & Career": ["boss", "employee", "manager", "office", "work", "job", "interview", "meeting", "deadline", "coworker", "workplace", "fired", "salary", "promotion", "company"],
-        "Food & Dining": ["food", "eat", "dinner", "lunch", "breakfast", "cook", "restaurant", "pizza", "burger", "cake", "dessert", "drink", "chef", "meal", "hungry", "kitchen"],
-        "Travel": ["travel", "trip", "vacation", "plane", "airport", "hotel", "beach", "tourist", "flight", "road trip", "visited", "destination"],
-        "Family": ["mom", "dad", "mother", "father", "brother", "sister", "son", "daughter", "kid", "kids", "child", "family", "parent", "grandma", "grandpa", "baby"],
-        "Observational": ["people", "society", "everyone", "nobody", "always", "never", "why do", "have you noticed", "isn't it funny", "the thing about"],
-        "Dark Humor": ["death", "die", "dead", "funeral", "kill", "dark", "hell", "devil", "ghost", "scary", "horror", "blood"],
-        "Sports": ["football", "basketball", "soccer", "baseball", "hockey", "tennis", "golf", "gym", "workout", "exercise", "coach", "team", "game", "player"],
-        "Technology": ["computer", "phone", "internet", "app", "software", "programmer", "code", "tech", "robot", "ai", "wifi", "social media"],
-        "Health": ["doctor", "hospital", "medicine", "sick", "health", "nurse", "surgery", "pain", "therapy", "diet", "fitness"],
-        "Money": ["money", "cash", "dollar", "rich", "poor", "broke", "bank", "credit", "debt", "expensive", "cheap", "budget", "tax"],
-        "School": ["school", "college", "university", "student", "teacher", "professor", "class", "test", "exam", "homework", "grade"],
-        "Animals": ["dog", "cat", "bird", "fish", "animal", "pet", "horse", "cow", "chicken", "pig", "bear", "lion"],
+        "Relationships": [
+            // Dating & Romance
+            "boyfriend", "girlfriend", "husband", "wife", "spouse", "partner",
+            "marriage", "married", "wedding", "engaged", "engagement",
+            "dating", "date", "tinder", "bumble", "swipe",
+            "love", "romance", "romantic", "kiss", "kissing",
+            "breakup", "broke up", "divorce", "divorced", "ex",
+            "relationship", "couple", "anniversary",
+            "cheating", "affair", "flirt", "crush", "single"
+        ],
+        "Work": [
+            // Job & Career
+            "boss", "manager", "employee", "coworker", "colleague",
+            "office", "workplace", "cubicle", "desk", "meeting",
+            "work", "working", "job", "career", "profession",
+            "interview", "resume", "hired", "fired", "quit",
+            "salary", "paycheck", "raise", "promotion", "demoted",
+            "deadline", "project", "presentation", "email", "emails",
+            "monday", "friday", "weekend", "commute", "commuting",
+            // Money (combined)
+            "money", "cash", "dollar", "rich", "poor", "broke",
+            "bank", "credit", "debt", "expensive", "cheap", "budget", "tax"
+        ],
+        "Family": [
+            // Parents
+            "mom", "mother", "dad", "father", "parent", "parents",
+            // Siblings
+            "brother", "sister", "sibling", "siblings",
+            // Children
+            "son", "daughter", "kid", "kids", "child", "children",
+            "baby", "babies", "toddler", "teenager", "teen",
+            // Extended family
+            "grandma", "grandmother", "grandpa", "grandfather", "grandparent",
+            "uncle", "aunt", "cousin", "in-law", "in-laws",
+            "family", "relative", "relatives", "reunion"
+        ],
+        "Observational": [
+            // Common phrases
+            "people", "everyone", "nobody", "somebody", "anybody",
+            "always", "never", "sometimes", "every time",
+            "why do", "why does", "why is", "why are",
+            "have you noticed", "you know what", "isn't it",
+            "the thing about", "the problem with",
+            // Life situations
+            "life", "society", "world", "human", "humans",
+            "weird", "strange", "funny thing", "crazy",
+            // Common topics
+            "phone", "internet", "social media", "instagram", "facebook", "twitter",
+            "gym", "workout", "exercise", "diet", "eating",
+            "doctor", "hospital", "sick", "health",
+            "school", "college", "student", "teacher",
+            "travel", "vacation", "airport", "plane", "hotel",
+            "restaurant", "food", "eating", "dinner", "lunch",
+            "dog", "cat", "pet", "animal"
+        ],
+        "Dark Humor": [
+            // Death & Morbid
+            "death", "dead", "die", "dying", "died",
+            "kill", "killed", "murder", "funeral", "grave", "coffin",
+            // Horror
+            "ghost", "zombie", "demon", "devil", "hell", "satan",
+            "scary", "horror", "haunted", "curse", "cursed",
+            // Violence
+            "blood", "bleeding", "pain", "suffer", "suffering", "torture",
+            "crime", "criminal", "prison", "jail",
+            // Dark themes
+            "dark", "evil", "twisted", "messed up", "disturbing",
+            "suicide", "depression", "depressed", "anxiety", "therapy"
+        ],
         "Other": []
     ]
     
@@ -68,7 +117,12 @@ class AutoOrganizeService {
         var categories = getUserCategories()
         let trimmed = category.trimmingCharacters(in: .whitespaces)
         if !trimmed.isEmpty && !categories.contains(trimmed) {
-            categories.append(trimmed)
+            // Insert before "Other" if it exists
+            if let otherIndex = categories.firstIndex(of: "Other") {
+                categories.insert(trimmed, at: otherIndex)
+            } else {
+                categories.append(trimmed)
+            }
             saveUserCategories(categories)
         }
     }
@@ -83,44 +137,75 @@ class AutoOrganizeService {
         saveUserCategories(categories)
     }
     
-    // MARK: - Auto-Organize ALL Jokes
+    // MARK: - Smart Categorization
     
-    /// Finds the best category for a joke based on keyword matching
+    /// Finds the best category using smart keyword matching
     static func findBestCategory(for joke: Joke, using categories: [String]) -> String {
         let text = (joke.title + " " + joke.content).lowercased()
         
-        var bestCategory = "Other"
-        var bestMatchCount = 0
+        var categoryScores: [(category: String, score: Int, matches: [String])] = []
         
         for category in categories {
+            guard category != "Other" else { continue }
+            
             let keywords = categoryKeywords[category] ?? []
-            var matchCount = 0
+            var score = 0
+            var matchedKeywords: [String] = []
             
             for keyword in keywords {
-                if text.contains(keyword.lowercased()) {
-                    matchCount += 1
+                // Use word boundary matching for better accuracy
+                if smartContains(text: text, keyword: keyword) {
+                    score += 1
+                    matchedKeywords.append(keyword)
+                    
+                    // Bonus points for longer/more specific keywords
+                    if keyword.contains(" ") {
+                        score += 1  // Phrases get bonus
+                    }
                 }
             }
             
-            if matchCount > bestMatchCount {
-                bestMatchCount = matchCount
-                bestCategory = category
+            if score > 0 {
+                categoryScores.append((category, score, matchedKeywords))
             }
         }
         
-        // If no matches found and "Other" isn't in categories, use first category
-        if bestMatchCount == 0 {
-            if categories.contains("Other") {
-                return "Other"
-            } else {
-                return categories.first ?? "Other"
-            }
+        // Sort by score (highest first)
+        categoryScores.sort { $0.score > $1.score }
+        
+        // Return best match, or "Other" if no matches
+        if let best = categoryScores.first, best.score >= 1 {
+            return best.category
         }
         
-        return bestCategory
+        // Default to "Other" or first category
+        if categories.contains("Other") {
+            return "Other"
+        }
+        return categories.first ?? "Other"
     }
     
-    /// Auto-organizes ALL jokes (not just unorganized ones)
+    /// Smart text matching - handles word boundaries better
+    private static func smartContains(text: String, keyword: String) -> Bool {
+        // For phrases (multi-word keywords), use simple contains
+        if keyword.contains(" ") {
+            return text.contains(keyword)
+        }
+        
+        // For single words, try to match word boundaries
+        // This prevents "the" matching "other" etc.
+        let pattern = "\\b\(NSRegularExpression.escapedPattern(for: keyword))\\b"
+        if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+            let range = NSRange(text.startIndex..., in: text)
+            return regex.firstMatch(in: text, options: [], range: range) != nil
+        }
+        
+        // Fallback to simple contains
+        return text.contains(keyword)
+    }
+    
+    // MARK: - Organize All Jokes
+    
     static func organizeAllJokes(
         jokes: [Joke],
         categories: [String],
