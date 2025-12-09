@@ -36,7 +36,7 @@ struct JokesView: View {
             if let folder = selectedFolder {
                 return jokes.filter { $0.folder?.id == folder.id }
             }
-            return jokes.filter { $0.folder == nil }
+            return jokes
         } else {
             let filtered = jokes.filter { joke in
                 joke.title.localizedCaseInsensitiveContains(searchText) ||

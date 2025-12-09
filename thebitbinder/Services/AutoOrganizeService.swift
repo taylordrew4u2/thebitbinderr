@@ -64,9 +64,9 @@ fileprivate struct AOSPatternMatchResult {
 
 final class AutoOrganizeService {
     // MARK: - Configuration
-    private static let confidenceThresholdForAutoOrganize: Double = 0.55
-    private static let confidenceThresholdForSuggestion: Double = 0.25
-    private static let multiCategoryThreshold: Double = 0.35
+    private static let confidenceThresholdForAutoOrganize: Double = 0.15
+    private static let confidenceThresholdForSuggestion: Double = 0.08
+    private static let multiCategoryThreshold: Double = 0.12
     
     // MARK: - Comedy Category Lexicon
     private static let categories: [String: AOSCategoryKeywords] = [
