@@ -15,19 +15,72 @@ struct CategorizationResult {
     let confidence: String
     let matchedKeywords: [String]
     let reasoning: String
+    let patternMatched: String?  // New: describes the pattern that was matched
 }
 
 class AutoOrganizeService {
     
-    // MARK: - Fewer Default Categories (6 core + Other)
+    // MARK: - Enhanced Categories with Semantic Patterns
     
     static let defaultCategories = [
         "Relationships",
         "Work",
         "Family",
+        "Self-Deprecating",  // New category for "what I look like" type jokes
         "Observational",
         "Dark Humor",
         "Other"
+    ]
+    
+    // MARK: - Semantic Patterns (Advanced Reasoning)
+    
+    private static let semanticPatterns: [(pattern: String, category: String, description: String)] = [
+        // Self-deprecating patterns
+        ("what i look like", "Self-Deprecating", "self-appearance jokes"),
+        ("how i look", "Self-Deprecating", "self-appearance jokes"),
+        ("my face", "Self-Deprecating", "self-appearance jokes"),
+        ("my body", "Self-Deprecating", "self-physical jokes"),
+        ("i'm so", "Self-Deprecating", "self-criticism"),
+        ("i am so", "Self-Deprecating", "self-criticism"),
+        ("my life", "Self-Deprecating", "life situation jokes"),
+        ("me when", "Self-Deprecating", "self-referential situations"),
+        ("when i", "Self-Deprecating", "personal experience"),
+        ("i be like", "Self-Deprecating", "self-referential"),
+        
+        // Relationship patterns
+        ("my girlfriend", "Relationships", "girlfriend jokes"),
+        ("my boyfriend", "Relationships", "boyfriend jokes"),
+        ("my wife", "Relationships", "spouse jokes"),
+        ("my husband", "Relationships", "spouse jokes"),
+        ("my ex", "Relationships", "ex-relationship jokes"),
+        ("on a date", "Relationships", "dating scenarios"),
+        ("first date", "Relationships", "dating scenarios"),
+        ("tinder", "Relationships", "dating app experiences"),
+        
+        // Work patterns
+        ("my boss", "Work", "boss-related situations"),
+        ("at work", "Work", "workplace situations"),
+        ("my job", "Work", "job-related experiences"),
+        ("coworker", "Work", "colleague interactions"),
+        ("working from home", "Work", "remote work"),
+        ("zoom meeting", "Work", "virtual meetings"),
+        ("monday morning", "Work", "work week struggles"),
+        
+        // Family patterns
+        ("my mom", "Family", "mother jokes"),
+        ("my dad", "Family", "father jokes"),
+        ("my parents", "Family", "parent jokes"),
+        ("my kid", "Family", "children jokes"),
+        ("my kids", "Family", "children jokes"),
+        ("family dinner", "Family", "family gatherings"),
+        
+        // Observational patterns
+        ("have you ever", "Observational", "common experiences"),
+        ("why do people", "Observational", "people observations"),
+        ("why does", "Observational", "situational observations"),
+        ("isn't it weird", "Observational", "observational humor"),
+        ("you know what", "Observational", "relatable observations"),
+        ("the fact that", "Observational", "reality observations")
     ]
     
     // MARK: - Smart Keywords (expanded for better matching)
@@ -52,6 +105,7 @@ class AutoOrganizeService {
             "salary", "paycheck", "raise", "promotion", "demoted",
             "deadline", "project", "presentation", "email", "emails",
             "monday", "friday", "weekend", "commute", "commuting",
+            "zoom", "teams", "slack",
             // Money (combined)
             "money", "cash", "dollar", "rich", "poor", "broke",
             "bank", "credit", "debt", "expensive", "cheap", "budget", "tax"
@@ -68,6 +122,18 @@ class AutoOrganizeService {
             "grandma", "grandmother", "grandpa", "grandfather", "grandparent",
             "uncle", "aunt", "cousin", "in-law", "in-laws",
             "family", "relative", "relatives", "reunion"
+        ],
+        "Self-Deprecating": [
+            // Appearance
+            "ugly", "fat", "skinny", "short", "tall", "bald",
+            "look like", "appearance", "mirror", "reflection",
+            // Self-criticism
+            "stupid", "dumb", "idiot", "failure", "loser",
+            "awkward", "weird", "embarrassing", "cringe",
+            // Life situations
+            "single", "alone", "lonely", "depressed", "anxious",
+            "broke", "poor", "struggling", "mess",
+            "disaster", "train wreck"
         ],
         "Observational": [
             // Common phrases
@@ -146,12 +212,26 @@ class AutoOrganizeService {
         saveUserCategories(categories)
     }
     
-    // MARK: - Smart Categorization with Reasoning
+    // MARK: - Advanced Categorization with Semantic Patterns
     
-    /// Categorizes a joke and returns detailed reasoning
+    /// Categorizes a joke using both semantic patterns and keywords
     static func categorizeJoke(_ joke: Joke, using categories: [String]) -> CategorizationResult {
         let text = (joke.title + " " + joke.content).lowercased()
         
+        // STEP 1: Check for semantic patterns first (highest priority)
+        for pattern in semanticPatterns {
+            if categories.contains(pattern.category) && text.contains(pattern.pattern) {
+                return CategorizationResult(
+                    category: pattern.category,
+                    confidence: "Very High",
+                    matchedKeywords: [pattern.pattern],
+                    reasoning: "Detected \(pattern.description) pattern",
+                    patternMatched: pattern.pattern
+                )
+            }
+        }
+        
+        // STEP 2: Use keyword-based scoring
         var categoryScores: [(category: String, score: Int, matches: [String])] = []
         
         for category in categories {
@@ -168,7 +248,7 @@ class AutoOrganizeService {
                     
                     // Bonus points for longer/more specific keywords
                     if keyword.contains(" ") {
-                        score += 1  // Phrases get bonus
+                        score += 2  // Increased bonus for phrases
                     }
                 }
             }
@@ -194,7 +274,8 @@ class AutoOrganizeService {
                 category: best.category,
                 confidence: confidence,
                 matchedKeywords: best.matches,
-                reasoning: reasoning
+                reasoning: reasoning,
+                patternMatched: nil
             )
         }
         
@@ -204,11 +285,12 @@ class AutoOrganizeService {
             category: defaultCategory,
             confidence: "Low",
             matchedKeywords: [],
-            reasoning: "No specific keywords matched - categorized as general content"
+            reasoning: "No specific keywords or patterns matched - categorized as general content",
+            patternMatched: nil
         )
     }
     
-    /// Finds the best category using smart keyword matching (legacy method)
+    /// Finds the best category using advanced pattern matching (legacy method)
     static func findBestCategory(for joke: Joke, using categories: [String]) -> String {
         return categorizeJoke(joke, using: categories).category
     }
@@ -216,10 +298,10 @@ class AutoOrganizeService {
     /// Generates confidence level based on match score
     private static func generateConfidence(score: Int) -> String {
         switch score {
-        case 6...: return "Very High"
-        case 4...5: return "High"
-        case 2...3: return "Medium"
-        case 1: return "Low"
+        case 8...: return "Very High"
+        case 5...7: return "High"
+        case 3...4: return "Medium"
+        case 1...2: return "Low"
         default: return "None"
         }
     }
@@ -231,9 +313,9 @@ class AutoOrganizeService {
         
         let confidenceText: String
         switch matchCount {
-        case 6...: confidenceText = "Very confident"
-        case 4...5: confidenceText = "Confident"
-        case 2...3: confidenceText = "Moderately confident"
+        case 8...: confidenceText = "Very confident"
+        case 5...7: confidenceText = "Confident"
+        case 3...4: confidenceText = "Moderately confident"
         default: confidenceText = "Possibly"
         }
         
@@ -284,7 +366,7 @@ class AutoOrganizeService {
             }
         }
         
-        // Organize each joke
+        // Organize each joke with advanced reasoning
         for joke in jokes {
             let result = categorizeJoke(joke, using: categories)
             results.append(result)

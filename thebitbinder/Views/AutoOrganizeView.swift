@@ -59,15 +59,15 @@ struct AutoOrganizeView: View {
         VStack(spacing: 0) {
             // Header Info
             VStack(spacing: 8) {
-                Image(systemName: "wand.and.stars")
+                Image(systemName: "brain.head.profile")
                     .font(.system(size: 40))
-                    .foregroundColor(.blue)
+                    .foregroundColor(.purple)
                 
-                Text("Auto-Organize All Jokes")
+                Text("Smart Auto-Organize")
                     .font(.title2)
                     .fontWeight(.bold)
                 
-                Text("\(jokes.count) jokes will be organized into folders")
+                Text("\(jokes.count) jokes • Advanced pattern detection")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -93,7 +93,7 @@ struct AutoOrganizeView: View {
                 .padding(.horizontal)
                 .padding(.top)
                 
-                Text("Edit categories before organizing. Jokes will be sorted based on keywords.")
+                Text("Detects patterns like \"what I look like\", \"my wife\", \"at work\" and more")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .padding(.horizontal)
@@ -157,22 +157,22 @@ struct AutoOrganizeView: View {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         } else {
-                            Image(systemName: "sparkles")
+                            Image(systemName: "brain.head.profile")
                         }
                         
-                        Text(isOrganizing ? "Organizing..." : "Organize All Jokes")
+                        Text(isOrganizing ? "Analyzing..." : "Smart Organize")
                             .fontWeight(.semibold)
                     }
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(categories.isEmpty ? Color.gray : Color.blue)
+                    .background(categories.isEmpty ? Color.gray : Color.purple)
                     .cornerRadius(12)
                 }
                 .disabled(categories.isEmpty || isOrganizing)
                 .padding(.horizontal)
                 
-                Text("This will sort all \(jokes.count) jokes into folders based on content")
+                Text("Advanced AI detects patterns and groups similar jokes together")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -196,9 +196,27 @@ struct AutoOrganizeView: View {
                     .font(.title2)
                     .fontWeight(.bold)
                 
-                Text("Successfully organized \(organizedCount) jokes")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                HStack(spacing: 16) {
+                    VStack(spacing: 4) {
+                        Text("\(organizedCount)")
+                            .font(.title)
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                        Text("Organized")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    VStack(spacing: 4) {
+                        Text("\(patternMatchCount)")
+                            .font(.title)
+                            .fontWeight(.bold)
+                            .foregroundColor(.purple)
+                        Text("Patterns")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
             .padding()
             .frame(maxWidth: .infinity)
@@ -229,15 +247,33 @@ struct AutoOrganizeView: View {
                             }
                             
                             if let sample = group.sample {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Example reasoning:")
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Example:")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                     
+                                    // Show pattern match prominently if detected
+                                    if let pattern = sample.patternMatched {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "brain.head.profile")
+                                                .font(.caption)
+                                                .foregroundColor(.purple)
+                                            
+                                            Text("Pattern: \"\(pattern)\"")
+                                                .font(.caption)
+                                                .foregroundColor(.purple)
+                                                .fontWeight(.semibold)
+                                        }
+                                        .padding(.vertical, 4)
+                                        .padding(.horizontal, 8)
+                                        .background(Color.purple.opacity(0.1))
+                                        .cornerRadius(6)
+                                    }
+                                    
                                     HStack(spacing: 4) {
-                                        Image(systemName: "sparkles")
+                                        Image(systemName: sample.patternMatched != nil ? "checkmark.circle.fill" : "sparkles")
                                             .font(.caption2)
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(sample.patternMatched != nil ? .green : .blue)
                                         
                                         Text(sample.reasoning)
                                             .font(.caption)
@@ -245,7 +281,7 @@ struct AutoOrganizeView: View {
                                             .italic()
                                     }
                                     
-                                    if !sample.matchedKeywords.isEmpty {
+                                    if !sample.matchedKeywords.isEmpty && sample.patternMatched == nil {
                                         ScrollView(.horizontal, showsIndicators: false) {
                                             HStack(spacing: 4) {
                                                 ForEach(sample.matchedKeywords.prefix(5), id: \.self) { keyword in
@@ -272,6 +308,12 @@ struct AutoOrganizeView: View {
             }
             .listStyle(.insetGrouped)
         }
+    }
+    
+    // MARK: - Helper Properties
+    
+    private var patternMatchCount: Int {
+        categorizationResults.filter { $0.patternMatched != nil }.count
     }
     
     // MARK: - Helper Methods
