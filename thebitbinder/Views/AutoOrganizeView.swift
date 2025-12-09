@@ -279,6 +279,30 @@ struct JokeOrganizationCard: View {
                 .padding(12)
                 .background(Color.blue.opacity(0.05))
                 .cornerRadius(8)
+            } else {
+                // No suggestion available
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("No automatic suggestion")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Button(action: onTap) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "folder.badge.plus")
+                            Text("Choose Category")
+                        }
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(6)
+                    }
+                }
+                .padding(12)
+                .background(Color.orange.opacity(0.05))
+                .cornerRadius(8)
             }
         }
         .padding()
