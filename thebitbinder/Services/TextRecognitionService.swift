@@ -114,6 +114,40 @@ class TextRecognitionService {
             }
         }
         
+        // Method 1.5: Bullet points (•, -, *, etc.) - Get FULL text until next bullet
+        print("📝 Method 1.5: Bullet points")
+        let bulletPattern = #"(?:^|\n)\s*[•\-\*►▸●○◦▪⁃■□★☆>]\s*"#
+        if let bulletRegex = try? NSRegularExpression(pattern: bulletPattern, options: [.anchorsMatchLines]) {
+            let bulletRange = NSRange(text.startIndex..., in: text)
+            let bulletMatches = bulletRegex.matches(in: text, options: [], range: bulletRange)
+            print("📝 Found \(bulletMatches.count) bullet markers")
+            
+            if bulletMatches.count >= 2 {
+                var bulletLastEnd = text.startIndex
+                for (i, match) in bulletMatches.enumerated() {
+                    if let r = Range(match.range, in: text) {
+                        if i > 0 {
+                            let joke = String(text[bulletLastEnd..<r.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                            if joke.count >= 5 {
+                                print("✅ Bullet \(i): \(joke.prefix(50))...")
+                                jokes.append(joke)
+                            }
+                        }
+                        bulletLastEnd = r.upperBound
+                    }
+                }
+                let bulletFinal = String(text[bulletLastEnd...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                if bulletFinal.count >= 5 {
+                    print("✅ Final bullet: \(bulletFinal.prefix(50))...")
+                    jokes.append(bulletFinal)
+                }
+                if !jokes.isEmpty {
+                    print("📝 Method 1.5 SUCCESS: \(jokes.count) jokes from bullets")
+                    return jokes
+                }
+            }
+        }
+        
         // Method 2: Double line breaks
         print("📝 Method 2: Paragraphs")
         let paras = text.components(separatedBy: "\n\n")
