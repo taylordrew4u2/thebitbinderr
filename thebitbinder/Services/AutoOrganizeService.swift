@@ -62,15 +62,38 @@ struct PatternMatchResult {
     let confidence: Double
 }
 
-// Quick type definitions for text reconstruction
+// Type aliases for reconstructed text and templates
 typealias ReconstructedText = (original: String, reconstructed: String, confidenceScore: Double, changesApplied: [String])
 typealias JokeTemplate = (pattern: String, commonStructures: [String], keywordSignatures: [String], successRate: Double, usageCount: Int, successCount: Int)
+
 struct CoherenceAnalysis {
     let score: Double
     let issues: [String]
     let needsManualReview: Bool
     let suggestedCategory: String?
 }
+
+// Wordplay detection helpers
+let homophoneSets: [[String]] = [
+    ["to", "too", "two"],
+    ["be", "bee"],
+    ["see", "sea"],
+    ["here", "hear"],
+    ["write", "right"],
+    ["mail", "male"],
+    ["knight", "night"]
+]
+
+let doubleMeaningWords: [(String, String)] = [
+    ("bark", "tree coating or dog sound"),
+    ("bank", "financial or river side"),
+    ("can", "is able or container"),
+    ("date", "calendar or romantic outing"),
+    ("fair", "just or carnival")
+]
+
+// Placeholder for jokePatterns used in pattern matching
+private let jokePatterns: [String: [String]] = [:]
 
 class AutoOrganizeService {
     // MARK: - Configuration
