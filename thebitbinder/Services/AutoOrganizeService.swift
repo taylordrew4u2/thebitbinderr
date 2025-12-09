@@ -166,6 +166,7 @@ class AutoOrganizeService {
     static func categorizeJoke(_ joke: Joke) -> [CategoryMatch] {
         let normalized = normalize(joke.title + " " + joke.content)
         let style = analyzeStyle(in: normalized)
+        let structure = analyzeJokeStructure(normalized)
         let topicMatches = scoreCategories(in: normalized)
         var matches: [CategoryMatch] = []
         
@@ -174,7 +175,7 @@ class AutoOrganizeService {
                 CategoryMatch(
                     category: match.category,
                     confidence: match.confidence,
-                    reasoning: reasoning(for: match, style: style),
+                    reasoning: reasoning(for: match, style: style, structure: structure),
                     matchedKeywords: match.evidence,
                     styleTags: style.tags,
                     emotionalTone: style.tone,
@@ -435,7 +436,7 @@ class AutoOrganizeService {
     private static func completeTruncatedSentences(_ text: inout String) -> [String] {
         var changes: [String] = []
         
-        let sentences = text.split(separator: CharacterSet(charactersIn: ".!?")).map { String($0).trimmingCharacters(in: .whitespaces) }
+        let sentences = text.split(whereSeparator: { ".!?".contains($0) }).map { String($0).trimmingCharacters(in: .whitespaces) }
         
         for (index, sentence) in sentences.enumerated() {
             // Check for incomplete sentences (no verb or object)
@@ -562,13 +563,13 @@ class AutoOrganizeService {
         case "Puns":
             score = structure.wordplayScore
         case "One-Liners":
-            score = structure.format == .oneLiner ? 0.9 : 0.3
+            score = structure.format == JokeFormat.oneLiner ? 0.9 : 0.3
         case "Knock-Knock":
             score = text.lowercased().contains("knock knock") ? 0.9 : 0.2
         case "Observational":
             score = text.lowercased().contains("why do") || text.lowercased().contains("have you") ? 0.8 : 0.3
         case "Anecdotal":
-            score = structure.format == .storyTwist || structure.format == .sequential ? 0.8 : 0.3
+            score = structure.format == JokeFormat.storyTwist || structure.format == JokeFormat.sequential ? 0.8 : 0.3
         case "Dark Humor":
             let darkWords = ["death", "suicide", "grave", "dying", "murder"]
             let hasDarkWords = darkWords.contains { text.lowercased().contains($0) }
@@ -715,7 +716,12 @@ class AutoOrganizeService {
         }
         
         // Check for missing punctuation that breaks structure
-        let sentences = text.split(separator: CharacterSet(charactersIn: ".!?"))
+        let sentences: [String] = {
+            let pattern = "[^.!?]+"
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return [text] }
+            let range = NSRange(text.startIndex..., in: text)
+            return regex.matches(in: text, range: range).compactMap { Range($0.range, in: text) }.map { String(text[$0]).trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        }()
         if sentences.count < 2 && text.count > 100 {
             score -= 0.2
             issues.append("Missing punctuation breaks joke structure")
@@ -874,6 +880,47 @@ class AutoOrganizeService {
     }
     
     // MARK: - Helpers
+    
+    /// Analyzes joke structure heuristics for a given text
+    private static func analyzeJokeStructure(_ text: String) -> JokeStructure {
+        let lower = text.lowercased()
+        let hasQ = lower.contains("?") || lower.contains("why ") || lower.contains("what ") || lower.contains("how ")
+        let hasAnswerIndicators = lower.contains("because") || lower.contains("so ") || lower.contains("that's why")
+        let lines = text.split(separator: "\n").map { String($0) }
+        let setupLines = lines.prefix { !$0.contains("?") }.count
+        let punchLines = max(1, lines.count - setupLines)
+
+        // Wordplay heuristic using homophones/double meanings already defined
+        var wordplay = 0.0
+        for set in homophoneSets {
+            let present = set.filter { lower.contains($0) }
+            if present.count >= 2 { wordplay += 0.5; break }
+        }
+        for (word, _) in doubleMeaningWords { if lower.contains(word) { wordplay += 0.1 } }
+        wordplay = min(wordplay, 1.0)
+
+        // Determine format
+        let format: JokeFormat
+        if lower.contains("knock knock") { format = .sequential }
+        else if hasQ && hasAnswerIndicators { format = .questionAnswer }
+        else if lines.count <= 2 && text.count < 140 { format = .oneLiner }
+        else if lower.contains("\n") && (lower.contains("then ") || lower.contains("turns out") || lower.contains("but ")) { format = .storyTwist }
+        else { format = .unknown }
+
+        return JokeStructure(
+            hasSetup: hasQ || setupLines > 0,
+            hasPunchline: hasAnswerIndicators || punchLines > 0,
+            format: format,
+            wordplayScore: wordplay,
+            setupLineCount: setupLines,
+            punchlineLineCount: punchLines,
+            questionAnswerPattern: format == .questionAnswer,
+            storyTwistPattern: format == .storyTwist,
+            oneLiners: format == .oneLiner ? 1 : 0,
+            dialogueCount: lower.components(separatedBy: ": ").count - 1
+        )
+    }
+    
     private static func scoreCategories(in text: String) -> [TopicMatch] {
         var results: [TopicMatch] = []
         for (category, keywords) in categories {
@@ -997,3 +1044,4 @@ extension String {
         }
     }
 }
+

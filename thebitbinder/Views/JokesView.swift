@@ -27,75 +27,88 @@ struct JokesView: View {
     @State private var exportedPDFURL: URL?
     @State private var selectedPhotos: [PhotosPickerItem] = []
     @State private var isProcessingImages = false
+    @State private var folderPendingDeletion: JokeFolder?
+    @State private var showingDeleteFolderAlert = false
+    @State private var showingMoveJokesSheet = false
+
+    @ViewBuilder
+    private var folderChips: some View {
+        if !folders.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    FolderChip(
+                        name: "All Jokes",
+                        isSelected: selectedFolder == nil,
+                        action: { selectedFolder = nil }
+                    )
+                    ForEach(folders) { folder in
+                        FolderChip(
+                            name: folder.name,
+                            isSelected: selectedFolder?.id == folder.id,
+                            action: { selectedFolder = folder }
+                        )
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                folderPendingDeletion = folder
+                                showingDeleteFolderAlert = true
+                            } label: {
+                                Label("Delete Folder", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal)
+            }
+            .padding(.vertical, 8)
+            .background(Color(UIColor.systemBackground))
+        }
+    }
+
+    @ViewBuilder
+    private var emptyState: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "text.bubble")
+                .font(.system(size: 60))
+                .foregroundColor(.gray)
+            Text("No jokes yet")
+                .font(.title2)
+                .foregroundColor(.gray)
+            Text("Add your first joke using the + button")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
     
     var filteredJokes: [Joke] {
-        if searchText.isEmpty {
-            if let folder = selectedFolder {
-                return jokes.filter { $0.folder?.id == folder.id }
-            }
-            return jokes.filter { $0.folder == nil }
+        // Start with base jokes depending on selected folder
+        let base: [Joke]
+        if let folder = selectedFolder {
+            base = jokes.filter { $0.folder?.id == folder.id }
         } else {
-            let filtered = jokes.filter { joke in
-                joke.title.localizedCaseInsensitiveContains(searchText) ||
-                joke.content.localizedCaseInsensitiveContains(searchText)
-            }
-            if let folder = selectedFolder {
-                return filtered.filter { $0.folder?.id == folder.id }
-            }
-            return filtered.filter { $0.folder == nil }
+            base = jokes
         }
+        
+        // Apply search filter if needed
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return base
+        }
+        let lower = trimmed.lowercased()
+        return base.filter { matchesSearch($0, lower: lower) }
     }
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Folder selection
-                if !folders.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            FolderChip(
-                                name: "All Jokes",
-                                isSelected: selectedFolder == nil,
-                                action: { selectedFolder = nil }
-                            )
-                            
-                            ForEach(folders) { folder in
-                                FolderChip(
-                                    name: folder.name,
-                                    isSelected: selectedFolder?.id == folder.id,
-                                    action: { selectedFolder = folder }
-                                )
-                                .contextMenu {
-                                    Button(role: .destructive) {
-                                        deleteFolder(folder)
-                                    } label: {
-                                        Label("Delete Folder", systemImage: "trash")
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
-                    .padding(.vertical, 8)
-                    .background(Color(UIColor.systemBackground))
-                }
+                folderChips
                 
                 Divider()
                 
                 // Jokes list
                 if filteredJokes.isEmpty {
-                    VStack(spacing: 20) {
-                        Image(systemName: "text.bubble")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
-                        Text("No jokes yet")
-                            .font(.title2)
-                            .foregroundColor(.gray)
-                        Text("Add your first joke using the + button")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    emptyState
                 } else {
                     List {
                         ForEach(filteredJokes) { joke in
@@ -188,6 +201,63 @@ struct JokesView: View {
             } message: {
                 Text("Your jokes have been exported to a PDF file.")
             }
+            .alert("Delete Folder?", isPresented: $showingDeleteFolderAlert) {
+                Button("Move Jokes…") {
+                    showingMoveJokesSheet = true
+                }
+                Button("Remove From Folder", role: .destructive) {
+                    if let folder = folderPendingDeletion {
+                        removeJokesFromFolderAndDelete(folder)
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    folderPendingDeletion = nil
+                }
+            } message: {
+                let count = folderPendingDeletion.map { f in jokes.filter { $0.folder?.id == f.id }.count } ?? 0
+                Text("This will delete the folder ‘\(folderPendingDeletion?.name ?? "")’. You can move its \(count) jokes to another folder, or remove them from any folder.")
+            }
+            .sheet(isPresented: $showingMoveJokesSheet) {
+                NavigationStack {
+                    List {
+                        // Option to create an unassigned state
+                        Button(action: {
+                            if let folder = folderPendingDeletion {
+                                moveJokes(from: folder, to: nil)
+                                deleteFolder(folder)
+                            }
+                            showingMoveJokesSheet = false
+                            folderPendingDeletion = nil
+                        }) {
+                            Label("Move to No Folder", systemImage: "tray")
+                        }
+                        
+                        ForEach(folders) { dest in
+                            // Prevent moving into the same folder
+                            if dest.id != folderPendingDeletion?.id {
+                                Button(action: {
+                                    if let source = folderPendingDeletion {
+                                        moveJokes(from: source, to: dest)
+                                        deleteFolder(source)
+                                    }
+                                    showingMoveJokesSheet = false
+                                    folderPendingDeletion = nil
+                                }) {
+                                    Label(dest.name, systemImage: "folder")
+                                }
+                            }
+                        }
+                    }
+                    .navigationTitle("Move Jokes To…")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") {
+                                showingMoveJokesSheet = false
+                            }
+                        }
+                    }
+                }
+            }
             .overlay {
                 if isProcessingImages {
                     Color.black.opacity(0.4)
@@ -204,6 +274,41 @@ struct JokesView: View {
     private func deleteJokes(at offsets: IndexSet) {
         for index in offsets {
             modelContext.delete(filteredJokes[index])
+        }
+    }
+    
+    private func moveJokes(from sourceFolder: JokeFolder, to destinationFolder: JokeFolder?) {
+        let jokesInFolder = jokes.filter { $0.folder?.id == sourceFolder.id }
+        for joke in jokesInFolder {
+            joke.folder = destinationFolder
+        }
+        do {
+            try modelContext.save()
+        } catch {
+            print("❌ Failed to move jokes: \(error)")
+        }
+    }
+    
+    private func removeJokesFromFolderAndDelete(_ folder: JokeFolder) {
+        let jokesInFolder = jokes.filter { $0.folder?.id == folder.id }
+        for joke in jokesInFolder {
+            joke.folder = nil
+        }
+        deleteFolder(folder)
+    }
+    
+    private func deleteFolder(_ folder: JokeFolder) {
+        // Move jokes out of the folder (set to nil) before deleting the folder
+        let jokesInFolder = jokes.filter { $0.folder?.id == folder.id }
+        for joke in jokesInFolder {
+            joke.folder = nil
+        }
+        
+        modelContext.delete(folder)
+        do {
+            try modelContext.save()
+        } catch {
+            print("❌ Failed to delete folder: \(error)")
         }
     }
     
@@ -386,6 +491,15 @@ struct JokesView: View {
     }
 }
 
+private extension JokesView {
+    func matchesSearch(_ joke: Joke, lower: String) -> Bool {
+        let title = joke.title.lowercased()
+        if title.contains(lower) { return true }
+        let content = joke.content.lowercased()
+        return content.contains(lower)
+    }
+}
+
 struct FolderChip: View {
     let name: String
     let isSelected: Bool
@@ -431,3 +545,4 @@ struct JokeRowView: View {
         .padding(.vertical, 4)
     }
 }
+

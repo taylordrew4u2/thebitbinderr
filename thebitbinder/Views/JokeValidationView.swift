@@ -264,7 +264,7 @@ struct JokeValidationView: View {
         
         // Save all remaining
         for i in currentIndex..<candidates.count {
-            var candidate = candidates[i]
+            let candidate = candidates[i]
             if !candidate.content.isEmpty && !candidate.suggestedTitle.isEmpty {
                 onSave(candidate)
             }
