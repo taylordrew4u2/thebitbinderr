@@ -8,6 +8,15 @@
 import Foundation
 import SwiftData
 
+// MARK: - Categorization Result
+
+struct CategorizationResult {
+    let category: String
+    let confidence: String
+    let matchedKeywords: [String]
+    let reasoning: String
+}
+
 class AutoOrganizeService {
     
     // MARK: - Fewer Default Categories (6 core + Other)
@@ -137,10 +146,10 @@ class AutoOrganizeService {
         saveUserCategories(categories)
     }
     
-    // MARK: - Smart Categorization
+    // MARK: - Smart Categorization with Reasoning
     
-    /// Finds the best category using smart keyword matching
-    static func findBestCategory(for joke: Joke, using categories: [String]) -> String {
+    /// Categorizes a joke and returns detailed reasoning
+    static func categorizeJoke(_ joke: Joke, using categories: [String]) -> CategorizationResult {
         let text = (joke.title + " " + joke.content).lowercased()
         
         var categoryScores: [(category: String, score: Int, matches: [String])] = []
@@ -153,7 +162,6 @@ class AutoOrganizeService {
             var matchedKeywords: [String] = []
             
             for keyword in keywords {
-                // Use word boundary matching for better accuracy
                 if smartContains(text: text, keyword: keyword) {
                     score += 1
                     matchedKeywords.append(keyword)
@@ -173,16 +181,63 @@ class AutoOrganizeService {
         // Sort by score (highest first)
         categoryScores.sort { $0.score > $1.score }
         
-        // Return best match, or "Other" if no matches
+        // Build result with reasoning
         if let best = categoryScores.first, best.score >= 1 {
-            return best.category
+            let confidence = generateConfidence(score: best.score)
+            let reasoning = generateReasoning(
+                category: best.category,
+                matchCount: best.matches.count,
+                keywords: best.matches
+            )
+            
+            return CategorizationResult(
+                category: best.category,
+                confidence: confidence,
+                matchedKeywords: best.matches,
+                reasoning: reasoning
+            )
         }
         
-        // Default to "Other" or first category
-        if categories.contains("Other") {
-            return "Other"
+        // Default to "Other"
+        let defaultCategory = categories.contains("Other") ? "Other" : (categories.first ?? "Other")
+        return CategorizationResult(
+            category: defaultCategory,
+            confidence: "Low",
+            matchedKeywords: [],
+            reasoning: "No specific keywords matched - categorized as general content"
+        )
+    }
+    
+    /// Finds the best category using smart keyword matching (legacy method)
+    static func findBestCategory(for joke: Joke, using categories: [String]) -> String {
+        return categorizeJoke(joke, using: categories).category
+    }
+    
+    /// Generates confidence level based on match score
+    private static func generateConfidence(score: Int) -> String {
+        switch score {
+        case 6...: return "Very High"
+        case 4...5: return "High"
+        case 2...3: return "Medium"
+        case 1: return "Low"
+        default: return "None"
         }
-        return categories.first ?? "Other"
+    }
+    
+    /// Generates human-readable reasoning
+    private static func generateReasoning(category: String, matchCount: Int, keywords: [String]) -> String {
+        let keywordList = keywords.prefix(5).joined(separator: ", ")
+        let moreText = keywords.count > 5 ? " and \(keywords.count - 5) more" : ""
+        
+        let confidenceText: String
+        switch matchCount {
+        case 6...: confidenceText = "Very confident"
+        case 4...5: confidenceText = "Confident"
+        case 2...3: confidenceText = "Moderately confident"
+        default: confidenceText = "Possibly"
+        }
+        
+        return "\(confidenceText) this is about \(category.lowercased()) — found: \(keywordList)\(moreText)"
     }
     
     /// Smart text matching - handles word boundaries better
@@ -193,7 +248,6 @@ class AutoOrganizeService {
         }
         
         // For single words, try to match word boundaries
-        // This prevents "the" matching "other" etc.
         let pattern = "\\b\(NSRegularExpression.escapedPattern(for: keyword))\\b"
         if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
             let range = NSRange(text.startIndex..., in: text)
@@ -211,9 +265,10 @@ class AutoOrganizeService {
         categories: [String],
         folders: [JokeFolder],
         modelContext: ModelContext
-    ) -> Int {
+    ) -> (count: Int, results: [CategorizationResult]) {
         var organizedCount = 0
         var folderMap: [String: JokeFolder] = [:]
+        var results: [CategorizationResult] = []
         
         // Build folder lookup
         for folder in folders {
@@ -231,15 +286,16 @@ class AutoOrganizeService {
         
         // Organize each joke
         for joke in jokes {
-            let bestCategory = findBestCategory(for: joke, using: categories)
+            let result = categorizeJoke(joke, using: categories)
+            results.append(result)
             
-            if let folder = folderMap[bestCategory] {
+            if let folder = folderMap[result.category] {
                 joke.folder = folder
                 organizedCount += 1
             }
         }
         
         try? modelContext.save()
-        return organizedCount
+        return (organizedCount, results)
     }
 }
