@@ -20,7 +20,6 @@ struct AutoOrganizeView: View {
     @State private var organizationStats: (organized: Int, suggested: Int) = (0, 0)
     @State private var selectedJoke: Joke?
     @State private var showCategoryDetails = false
-    @State private var customFolderName: String = ""
     
     var unorganizedJokes: [Joke] {
         jokes.filter { $0.folder == nil }
@@ -305,6 +304,7 @@ struct JokeOrganizationCard: View {
 
 struct CategorySuggestionDetail: View {
     @Environment(\.dismiss) var dismiss
+    @State private var customFolderName: String = ""
     
     let joke: Joke
     let onSelectCategory: (String) -> Void
@@ -378,6 +378,27 @@ struct CategorySuggestionDetail: View {
                                 .cornerRadius(8)
                             }
                         }
+                        // Custom Folder Input
+                        Divider().padding(.vertical)
+                        Text("Create New Folder")
+                            .font(.headline)
+                            .padding(.horizontal)
+                        
+                        HStack {
+                            TextField("New folder name...", text: $customFolderName)
+                                .textFieldStyle(.roundedBorder)
+                            Button(action: {
+                                if !customFolderName.trimmingCharacters(in: .whitespaces).isEmpty {
+                                    onSelectCategory(customFolderName.trimmingCharacters(in: .whitespaces))
+                                }
+                            }) {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                        .padding(.horizontal)
+                        
                     }
                     .padding()
                 }
