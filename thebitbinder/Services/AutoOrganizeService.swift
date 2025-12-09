@@ -8,185 +8,294 @@
 import Foundation
 import SwiftData
 
+struct StyleAnalysis {
+    let tags: [String]
+    let tone: String?
+    let craftSignals: [String]
+    let structureScore: Double
+    let hook: String?
+}
+
+struct TopicMatch {
+    let category: String
+    let confidence: Double
+    let evidence: [String]
+}
+
 class AutoOrganizeService {
+    // MARK: - Configuration
+    private static let confidenceThresholdForAutoOrganize: Double = 0.55
+    private static let confidenceThresholdForSuggestion: Double = 0.25
+    private static let multiCategoryThreshold: Double = 0.35
     
-    private static let confidenceThresholdForAutoOrganize: Double = 0.5
-    private static let confidenceThresholdForSuggestion: Double = 0.3
-    private static let multiCategoryThreshold: Double = 0.4
-    
-    // Comedy Style Categories with Signature Keywords
+    // MARK: - Comedy Category Lexicon
     private static let categories: [String: CategoryKeywords] = [
-        "Puns": CategoryKeywords(keywords: [("wordplay", 1.0), ("pun", 1.0), ("play on words", 1.0), ("double meaning", 0.9), ("homophone", 1.0), ("word", 0.7), ("like", 0.6), ("flies", 0.7), ("fruit", 0.7), ("arrow", 0.6), ("time", 0.5), ("banana", 0.6)], weight: 1.0),
-        "Roasts": CategoryKeywords(keywords: [("roast", 1.0), ("insult", 0.9), ("making fun", 0.9), ("you're so", 0.8), ("ugly", 0.8), ("stupid", 0.8), ("dumb", 0.8), ("idiot", 0.8), ("laugh", 0.6), ("burn", 0.7), ("own", 0.7), ("destroy", 0.6)], weight: 1.0),
-        "One-Liners": CategoryKeywords(keywords: [("one liner", 1.0), ("quick", 0.7), ("short", 0.6), ("wife", 0.5), ("told", 0.5), ("eyebrows", 0.7), ("surprised", 0.6), ("simple joke", 0.8)], weight: 1.0),
-        "Knock-Knock": CategoryKeywords(keywords: [("knock knock", 1.0), ("who's there", 1.0), ("who is there", 1.0), ("boo", 0.8), ("interrupting", 0.9), ("knock", 0.7)], weight: 1.0),
-        "Dad Jokes": CategoryKeywords(keywords: [("dad joke", 1.0), ("dad", 0.7), ("terrible", 0.6), ("corny", 0.8), ("stupid", 0.6), ("field", 0.7), ("scarecrow", 0.7), ("outstanding", 0.6), ("award", 0.5)], weight: 1.0),
-        "Sarcasm": CategoryKeywords(keywords: [("sarcasm", 1.0), ("sarcastic", 1.0), ("right", 0.6), ("sure", 0.6), ("great", 0.5), ("wonderful", 0.5), ("fantastic", 0.5), ("oh great", 0.8), ("just what i wanted", 0.8), ("obviously", 0.6), ("yeah right", 0.8)], weight: 1.0),
-        "Irony": CategoryKeywords(keywords: [("irony", 1.0), ("ironic", 1.0), ("weird", 0.7), ("unexpected", 0.7), ("opposite", 0.7), ("fire station", 0.9), ("burned down", 0.8), ("paradox", 0.8)], weight: 1.0),
-        "Satire": CategoryKeywords(keywords: [("satire", 1.0), ("satirical", 1.0), ("making fun of society", 1.0), ("mock", 0.8), ("social commentary", 0.9), ("government", 0.6), ("politics", 0.7), ("system", 0.6), ("daily show", 0.8)], weight: 1.0),
-        "Dark Humor": CategoryKeywords(keywords: [("death", 0.9), ("kill", 0.9), ("murder", 0.9), ("die", 0.8), ("dead", 0.8), ("suicide", 1.0), ("funeral", 0.8), ("dark", 0.8), ("tragedy", 0.9), ("blast", 0.7), ("bomber", 0.8), ("disturbing", 0.8)], weight: 1.0),
-        "Observational": CategoryKeywords(keywords: [("why do we", 1.0), ("why does", 0.9), ("have you ever", 0.8), ("observe", 0.8), ("notice", 0.8), ("everyday", 0.7), ("driveway", 0.8), ("parkway", 0.8), ("parking", 0.7), ("drive", 0.6)], weight: 1.0),
-        "Anecdotal": CategoryKeywords(keywords: [("one time", 1.0), ("so there i was", 1.0), ("story", 0.8), ("true story", 0.9), ("happened to me", 0.9), ("my friend", 0.7), ("drunk", 0.7), ("peed", 0.8), ("long story", 0.7), ("reminds me of", 0.6)], weight: 1.0),
-        "Self-Deprecating": CategoryKeywords(keywords: [("i'm not", 1.0), ("i'm so", 0.9), ("myself", 0.7), ("making fun of myself", 0.9), ("bad at", 0.8), ("terrible", 0.7), ("not good at", 0.8), ("loser", 0.7), ("stupid", 0.6), ("ugly", 0.6)], weight: 1.0),
-        "Anti-Jokes": CategoryKeywords(keywords: [("anti joke", 1.0), ("not funny", 0.8), ("wasn't really a joke", 0.9), ("chicken cross the road", 0.9), ("other side", 0.8), ("obvious", 0.7), ("subvert expectations", 0.8)], weight: 1.0),
-        "Riddles": CategoryKeywords(keywords: [("riddle", 1.0), ("what has", 1.0), ("clever answer", 0.9), ("four legs", 0.8), ("morning", 0.6), ("afternoon", 0.6), ("evening", 0.6), ("man", 0.5), ("sphinx", 0.8), ("puzzle", 0.8)], weight: 1.0)
+        "Puns": CategoryKeywords(keywords: [("pun", 1.0), ("wordplay", 1.0), ("play on words", 1.0), ("double meaning", 0.9), ("homophone", 0.9), ("fruit flies", 0.8), ("arrow", 0.6)]),
+        "Roasts": CategoryKeywords(keywords: [("roast", 1.0), ("insult", 0.9), ("you're so", 0.9), ("ugly", 0.9), ("trash", 0.8), ("burn", 0.7)]),
+        "One-Liners": CategoryKeywords(keywords: [("one liner", 1.0), ("quick", 0.7), ("short", 0.7), ("punchline", 0.8), ("she looked", 0.7)]),
+        "Knock-Knock": CategoryKeywords(keywords: [("knock knock", 1.0), ("who's there", 1.0), ("boo who", 0.9), ("interrupting", 0.8)]),
+        "Dad Jokes": CategoryKeywords(keywords: [("dad joke", 1.0), ("scarecrow", 0.9), ("outstanding in his field", 1.0), ("corny", 0.8), ("groan", 0.6)]),
+        "Sarcasm": CategoryKeywords(keywords: [("sarcasm", 1.0), ("sarcastic", 1.0), ("oh great", 1.0), ("yeah right", 0.9), ("sure", 0.7)]),
+        "Irony": CategoryKeywords(keywords: [("irony", 1.0), ("ironic", 1.0), ("unexpected", 0.8), ("fire station", 0.9), ("burned down", 0.9)]),
+        "Satire": CategoryKeywords(keywords: [("satire", 1.0), ("satirical", 1.0), ("society", 0.8), ("politics", 0.8), ("the daily show", 1.0)]),
+        "Dark Humor": CategoryKeywords(keywords: [("dark humor", 1.0), ("death", 0.9), ("tragedy", 0.9), ("suicide", 1.0), ("bomber", 0.8), ("blast", 0.7)]),
+        "Observational": CategoryKeywords(keywords: [("observational", 1.0), ("why do", 0.9), ("have you ever", 0.9), ("driveway", 0.8), ("parkway", 0.8)]),
+        "Anecdotal": CategoryKeywords(keywords: [("one time", 1.0), ("story", 0.8), ("this happened", 0.9), ("friend", 0.7), ("drunk", 0.6)]),
+        "Self-Deprecating": CategoryKeywords(keywords: [("self deprecating", 1.0), ("i'm so", 0.9), ("i'm not", 0.9), ("i suck", 0.8), ("i'm terrible", 0.8)]),
+        "Anti-Jokes": CategoryKeywords(keywords: [("anti joke", 1.0), ("not really a joke", 0.9), ("why did the chicken", 0.9), ("other side", 0.8)]),
+        "Riddles": CategoryKeywords(keywords: [("riddle", 1.0), ("what has", 1.0), ("clever answer", 0.9), ("legs", 0.7), ("morning", 0.6), ("evening", 0.6)]),
+        "Other": CategoryKeywords(keywords: [], weight: 0.2)
     ]
     
+    // MARK: - Style Lexicons
+    private static let styleCueLexicon: [String: [String]] = [
+        "Self-Deprecating": ["i'm so", "i'm not", "i suck", "i'm terrible"],
+        "Observational": ["have you ever", "why do", "isn't it weird"],
+        "Anecdotal": ["one time", "story", "so there i was"],
+        "Sarcasm": ["yeah right", "sure", "great", "wonderful", "of course"],
+        "Dark": ["death", "suicide", "funeral", "grave"],
+        "Satire": ["society", "politics", "system", "corporate"],
+        "Roast": ["you're so", "look at you", "sit down"],
+        "Dad": ["dad", "kids", "son", "daughter"],
+        "Wordplay": ["pun", "wordplay", "double meaning"],
+        "Anti-Joke": ["not even a joke", "literal", "just"],
+        "Knock-Knock": ["knock knock", "who's there"],
+        "Riddle": ["what has", "who am i", "clever answer"],
+        "Irony": ["ironically", "turns out", "of course the"],
+        "One-Liner": ["short", "quick", "line"],
+        "Story": ["long story", "cut to", "flash forward"],
+        "Roast": ["look at you", "you're so"],
+        "Blue": ["explicit", "naughty", "bedroom"],
+        "Topical": ["today", "headline", "trending"],
+        "Crowd": ["sir", "ma'am", "front row"]
+    ]
+    
+    private static let toneKeywords: [String: [String]] = [
+        "Playful": ["lol", "haha", "silly", "goofy"],
+        "Cynical": ["of course", "naturally", "figures"],
+        "Angry": ["hate", "furious", "annoyed"],
+        "Confessional": ["honestly", "truth", "real talk"],
+        "Dark": ["death", "suicide", "grave"],
+        "Hopeful": ["maybe", "believe", "hope"],
+        "Cringe": ["awkward", "embarrassing"]
+    ]
+    
+    private static let craftSignalsLexicon: [String: [String]] = [
+        "Rule of Three": ["first", "second", "third", "one", "two", "three"],
+        "Callback": ["again", "like before", "remember"],
+        "Misdirection": ["but", "instead", "actually", "turns out"],
+        "Act-Out": ["(acts", "[act", "stage"],
+        "Crowd Work": ["sir", "ma'am", "front row", "table"],
+        "Question/Punch": ["?", "answer is", "because"],
+        "Absurd Heighten": ["then suddenly", "escalated", "spiraled"]
+    ]
+    
+    // MARK: - Public API
     static func categorizeJoke(_ joke: Joke) -> [CategoryMatch] {
-        let content = (joke.title + " " + joke.content).lowercased()
+        let normalized = normalize(joke.title + " " + joke.content)
+        let style = analyzeStyle(in: normalized)
+        let topicMatches = scoreCategories(in: normalized)
         var matches: [CategoryMatch] = []
         
-        for (categoryName, keywords) in categories {
-            let confidence = calculateConfidence(for: content, with: keywords, jokeLength: joke.content.count)
-            if confidence >= confidenceThresholdForSuggestion {
-                let matchedKeywords = keywords.keywords.filter { content.containsWord($0.0) }.map { $0.0 }
-                let reasoning = generateReasoning(category: categoryName, matchCount: matchedKeywords.count, confidence: confidence)
-                
-                matches.append(CategoryMatch(category: categoryName, confidence: confidence, reasoning: reasoning, matchedKeywords: matchedKeywords, styleTags: [], emotionalTone: nil, craftSignals: [], structureScore: nil))
-            }
+        for match in topicMatches where match.confidence >= confidenceThresholdForSuggestion {
+            matches.append(
+                CategoryMatch(
+                    category: match.category,
+                    confidence: match.confidence,
+                    reasoning: reasoning(for: match, style: style),
+                    matchedKeywords: match.evidence,
+                    styleTags: style.tags,
+                    emotionalTone: style.tone,
+                    craftSignals: style.craftSignals,
+                    structureScore: style.structureScore
+                )
+            )
+        }
+        
+        if matches.isEmpty {
+            matches.append(CategoryMatch(
+                category: "Other",
+                confidence: 0.2,
+                reasoning: "No clear comedic cues detected — filing under Other for review.",
+                matchedKeywords: [],
+                styleTags: style.tags,
+                emotionalTone: style.tone,
+                craftSignals: style.craftSignals,
+                structureScore: style.structureScore
+            ))
         }
         
         matches.sort { $0.confidence > $1.confidence }
-        joke.categorizationResults = matches
-        if let topMatch = matches.first {
-            joke.primaryCategory = topMatch.category
-            joke.allCategories = matches.filter { $0.confidence >= multiCategoryThreshold }.map { $0.category }
-            for match in matches {
-                joke.categoryConfidenceScores[match.category] = match.confidence
-            }
-        }
-        
+        hydrate(joke, with: matches)
         return matches
     }
     
-    static func autoCategorize(title: String, content: String) -> String? {
-        let text = (title + " " + content).lowercased()
-        var bestCategory: String?
-        var bestScore: Double = 0
-        
-        for (categoryName, keywordSet) in categories {
-            var score: Double = 0
-            var matchCount = 0
-            for (keyword, weight) in keywordSet.keywords {
-                if text.containsWord(keyword) {
-                    score += weight
-                    matchCount += 1
-                }
-            }
-            if matchCount > 0 {
-                let normalizedScore = score / Double(keywordSet.keywords.count) * keywordSet.weight
-                if normalizedScore > bestScore && normalizedScore >= confidenceThresholdForSuggestion {
-                    bestScore = normalizedScore
-                    bestCategory = categoryName
-                }
-            }
-        }
-        
-        return bestCategory
-    }
-    
-    static func getBestCategory(_ joke: Joke) -> String? {
-        let matches = categorizeJoke(joke)
-        if let topMatch = matches.first, topMatch.confidence >= confidenceThresholdForAutoOrganize {
-            return topMatch.category
-        }
-        return nil
-    }
-    
-    static func autoOrganizeJokes(unorganizedJokes: [Joke], existingFolders: [JokeFolder], modelContext: ModelContext, completion: @escaping (Int, Int) -> Void) {
-        var organizedCount = 0
-        var suggestedCount = 0
-        var folderMap: [String: JokeFolder] = [:]
-        
-        for folder in existingFolders {
-            folderMap[folder.name] = folder
-        }
+    static func autoOrganizeJokes(
+        unorganizedJokes: [Joke],
+        existingFolders: [JokeFolder],
+        modelContext: ModelContext,
+        completion: @escaping (Int, Int) -> Void
+    ) {
+        var organized = 0
+        var suggested = 0
+        var folderMap = Dictionary(uniqueKeysWithValues: existingFolders.map { ($0.name, $0) })
         
         for joke in unorganizedJokes {
-            if let categoryName = getBestCategory(joke) {
-                var targetFolder = folderMap[categoryName]
-                if targetFolder == nil {
-                    targetFolder = JokeFolder(name: categoryName)
-                    modelContext.insert(targetFolder!)
-                    folderMap[categoryName] = targetFolder
-                    print("✅ Created: \(categoryName)")
-                }
-                joke.folder = targetFolder
-                organizedCount += 1
-                print("✅ Organized '\(joke.title)' → '\(categoryName)'")
+            let matches = categorizeJoke(joke)
+            let top = matches.first
+            var category = top?.category ?? "Other"
+            
+            if let best = top, best.confidence >= confidenceThresholdForAutoOrganize {
+                // solid match
             } else {
-                let matches = joke.categorizationResults
-                if !matches.isEmpty {
-                    print("⚠️ Suggested '\(joke.title)' → '\(matches.first?.category ?? "Unknown")'")
-                    suggestedCount += 1
+                suggested += 1
+                if top == nil || top?.confidence ?? 0 < 0.15 {
+                    category = "Other"
                 }
             }
+            
+            if folderMap[category] == nil {
+                let folder = JokeFolder(name: category)
+                modelContext.insert(folder)
+                folderMap[category] = folder
+                print("✅ AUTO-ORGANIZE: Created folder '\(category)'")
+            }
+            joke.folder = folderMap[category]
+            organized += 1
         }
         
         _ = ensureRecentlyAddedFolder(existingFolders: existingFolders, modelContext: modelContext)
         
         do {
             try modelContext.save()
-            print("✅ Saved \(organizedCount) jokes")
+            print("✅ AUTO-ORGANIZE: Saved changes for \(organized) jokes")
         } catch {
-            print("❌ Save error: \(error)")
+            print("❌ AUTO-ORGANIZE SAVE FAILED: \(error.localizedDescription)")
         }
         
-        completion(organizedCount, suggestedCount)
-    }
-    
-    @discardableResult
-    static func ensureRecentlyAddedFolder(existingFolders: [JokeFolder], modelContext: ModelContext) -> JokeFolder {
-        if let recentFolder = existingFolders.first(where: { $0.name == "Recently Added" }) {
-            return recentFolder
-        }
-        let recentFolder = JokeFolder(name: "Recently Added")
-        modelContext.insert(recentFolder)
-        return recentFolder
+        completion(organized, suggested)
     }
     
     static func getCategories() -> [String] {
-        return Array(categories.keys).sorted()
+        Array(categories.keys).sorted()
     }
     
-    static func assignJokeToFolder(_ joke: Joke, folderName: String, modelContext: ModelContext) {
+    static func assignJokeToFolder(_ joke: Joke, folderName: String, modelContext: ModelContext, autoSave: Bool = true) {
         do {
-            let folders = try modelContext.fetch(FetchDescriptor<JokeFolder>())
-            var targetFolder = folders.first(where: { $0.name == folderName })
-            if targetFolder == nil {
-                targetFolder = JokeFolder(name: folderName)
-                modelContext.insert(targetFolder!)
+            let descriptor = FetchDescriptor<JokeFolder>()
+            var folders = try modelContext.fetch(descriptor)
+            if let existing = folders.first(where: { $0.name.caseInsensitiveCompare(folderName) == .orderedSame }) {
+                joke.folder = existing
+            } else {
+                let folder = JokeFolder(name: folderName)
+                modelContext.insert(folder)
+                joke.folder = folder
+                folders.append(folder)
             }
-            joke.folder = targetFolder
-            try modelContext.save()
-            print("✅ Assigned '\(joke.title)' → '\(folderName)'")
+            if autoSave {
+                try modelContext.save()
+            }
         } catch {
-            print("❌ Error: \(error)")
+            print("❌ Failed to assign joke: \(error.localizedDescription)")
         }
     }
     
-    private static func calculateConfidence(for content: String, with keywordSet: CategoryKeywords, jokeLength: Int) -> Double {
-        var totalScore: Double = 0
-        var matchCount = 0
-        for (keyword, weight) in keywordSet.keywords {
-            if content.containsWord(keyword) {
-                totalScore += weight
-                matchCount += 1
+    @discardableResult
+    static func ensureRecentlyAddedFolder(
+        existingFolders: [JokeFolder],
+        modelContext: ModelContext
+    ) -> JokeFolder {
+        if let folder = existingFolders.first(where: { $0.name == "Recently Added" }) {
+            return folder
+        }
+        let folder = JokeFolder(name: "Recently Added")
+        modelContext.insert(folder)
+        return folder
+    }
+    
+    // MARK: - Helpers
+    private static func scoreCategories(in text: String) -> [TopicMatch] {
+        var results: [TopicMatch] = []
+        for (category, keywords) in categories {
+            let hits = keywords.keywords.filter { text.containsWord($0.0) }
+            guard !hits.isEmpty else { continue }
+            let weightSum = keywords.keywords.reduce(0.0) { $0 + $1.1 }
+            let score = hits.reduce(0.0) { $0 + $1.1 }
+            let lengthBoost = min(Double(text.count) / 800.0, 0.15)
+            let confidence = min(1.0, (score / max(weightSum, 1.0)) + lengthBoost)
+            results.append(TopicMatch(category: category, confidence: confidence, evidence: hits.map { $0.0 }))
+        }
+        return results.sorted { $0.confidence > $1.confidence }
+    }
+    
+    private static func analyzeStyle(in text: String) -> StyleAnalysis {
+        var styleScores: [(String, Int)] = []
+        for (tag, cues) in styleCueLexicon {
+            let hits = cues.filter { text.contains($0) }
+            guard !hits.isEmpty else { continue }
+            styleScores.append((tag, hits.count))
+        }
+        let tags = styleScores.sorted { $0.1 > $1.1 }.map { $0.0 }.prefix(4)
+        
+        var toneScores: [(String, Int)] = []
+        for (tone, cues) in toneKeywords {
+            let hits = cues.filter { text.contains($0) }
+            if !hits.isEmpty { toneScores.append((tone, hits.count)) }
+        }
+        let tone = toneScores.sorted { $0.1 > $1.1 }.first?.0
+        
+        var craftHits: [String] = []
+        for (signal, cues) in craftSignalsLexicon {
+            if cues.contains(where: { text.contains($0) }) {
+                craftHits.append(signal)
             }
         }
-        if matchCount == 0 { return 0 }
-        var confidence = min(totalScore / Double(keywordSet.keywords.count), 1.0)
-        if matchCount > 1 { confidence *= (1.0 + Double(matchCount - 1) * 0.1) }
-        let lengthBonus = min(Double(jokeLength) / 500.0, 0.2)
-        confidence *= (1.0 + lengthBonus)
-        confidence *= keywordSet.weight
-        return min(confidence, 1.0)
+        
+        var structureScore = 0.0
+        if text.contains("setup") { structureScore += 0.15 }
+        if text.contains("punchline") { structureScore += 0.15 }
+        if text.contains("tag") { structureScore += 0.1 }
+        let questionMarks = text.components(separatedBy: "?").count - 1
+        structureScore += min(0.2, Double(max(0, questionMarks)) * 0.05)
+        structureScore = min(1.0, structureScore)
+        
+        return StyleAnalysis(tags: Array(tags), tone: tone, craftSignals: craftHits, structureScore: structureScore, hook: tags.first ?? tone)
     }
     
-    private static func generateReasoning(category: String, matchCount: Int, confidence: Double) -> String {
-        let level = confidence >= 0.8 ? "very confident" : confidence >= 0.6 ? "confident" : confidence >= 0.4 ? "moderately confident" : "suggested"
-        let text = matchCount == 1 ? "keyword" : "keywords"
-        return "Found \(matchCount) \(text) - \(level)"
+    private static func reasoning(for match: TopicMatch, style: StyleAnalysis) -> String {
+        let confidenceText: String
+        switch match.confidence {
+        case 0.75...: confidenceText = "very confident"
+        case 0.5..<0.75: confidenceText = "confident"
+        case 0.35..<0.5: confidenceText = "moderately confident"
+        default: confidenceText = "suggested"
+        }
+        if let hook = style.hook {
+            return "Matches \(match.evidence.count) cues + \(hook) vibe — \(confidenceText)."
+        }
+        return "Matches \(match.evidence.count) cues — \(confidenceText)."
+    }
+    
+    private static func hydrate(_ joke: Joke, with matches: [CategoryMatch]) {
+        joke.categorizationResults = matches
+        if let top = matches.first {
+            joke.primaryCategory = top.category
+            joke.allCategories = matches.filter { $0.confidence >= multiCategoryThreshold }.map { $0.category }
+            var map: [String: Double] = [:]
+            matches.forEach { map[$0.category] = $0.confidence }
+            joke.categoryConfidenceScores = map
+            joke.styleTags = top.styleTags
+            joke.comedicTone = top.emotionalTone
+            joke.craftNotes = top.craftSignals
+            joke.structureScore = top.structureScore ?? 0.0
+        }
+    }
+    
+    private static func normalize(_ text: String) -> String {
+        text
+            .lowercased()
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
     }
 }
 
@@ -201,13 +310,14 @@ struct CategoryKeywords {
 
 extension String {
     func containsWord(_ word: String) -> Bool {
+        guard !word.isEmpty else { return false }
         let pattern = "\\b\(NSRegularExpression.escapedPattern(for: word))\\b"
         do {
             let regex = try NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
-            let range = NSRange(self.startIndex..., in: self)
+            let range = NSRange(startIndex..., in: self)
             return regex.firstMatch(in: self, options: [], range: range) != nil
         } catch {
-            return self.contains(word)
+            return contains(word)
         }
     }
 }

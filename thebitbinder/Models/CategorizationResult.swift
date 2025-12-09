@@ -14,6 +14,8 @@ struct CategoryMatch: Codable {
     var confidence: Double  // 0.0 to 1.0
     var reasoning: String
     var matchedKeywords: [String]
+    
+    // Metadata fields used by AutoOrganizeService
     var styleTags: [String]
     var emotionalTone: String?
     var craftSignals: [String]

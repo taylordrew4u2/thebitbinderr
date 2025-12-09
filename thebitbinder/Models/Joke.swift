@@ -24,13 +24,12 @@ final class Joke {
     // Store as comma-separated string internally
     private var allCategoriesString: String = ""
     private var categoryScoresString: String = ""  // format: "category1:0.8|category2:0.6"
-    private var styleTagsString: String = ""
-    private var craftNotesString: String = ""
+    private var styleTagsString: String = ""  // format: "tag1|tag2"
+    private var craftNotesString: String = ""  // format: "signal1|signal2"
     
-    // Additional fields for comedic elements
+    // Style metadata
     var comedicTone: String?
-    var comedicHook: String?
-    var structureScore: Double?
+    var structureScore: Double = 0.0
     
     // Computed property for allCategories
     var allCategories: [String] {
@@ -65,10 +64,10 @@ final class Joke {
     var styleTags: [String] {
         get {
             guard !styleTagsString.isEmpty else { return [] }
-            return styleTagsString.split(separator: ",").map { String($0) }
+            return styleTagsString.split(separator: "|").map { String($0) }
         }
         set {
-            styleTagsString = newValue.joined(separator: ",")
+            styleTagsString = newValue.joined(separator: "|")
         }
     }
     
@@ -90,5 +89,7 @@ final class Joke {
         self.dateCreated = Date()
         self.dateModified = Date()
         self.folder = folder
+        self.comedicTone = nil
+        self.structureScore = 0.0
     }
 }
