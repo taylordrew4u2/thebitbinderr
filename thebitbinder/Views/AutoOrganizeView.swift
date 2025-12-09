@@ -15,243 +15,202 @@ struct AutoOrganizeView: View {
     @Query private var jokes: [Joke]
     @Query private var folders: [JokeFolder]
     
-    @State private var categories = AutoOrganizeService.getUserCategories()
+    @State private var categories: [String] = []
     @State private var newCategory = ""
-    @State private var showAddCategory = false
-    @State private var organizationResult: (organized: Int, suggested: Int) = (0, 0)
-    @State private var showResult = false
-    @State private var selectedForCategory: Joke?
-    @State private var showCategoryMenu = false
-    
-    var unorganizedJokes: [Joke] {
-        jokes.filter { $0.folder == nil }
-    }
+    @State private var showingResult = false
+    @State private var organizedCount = 0
+    @State private var isOrganizing = false
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Header
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Auto-Organize Jokes")
+                // Header Info
+                VStack(spacing: 8) {
+                    Image(systemName: "wand.and.stars")
+                        .font(.system(size: 40))
+                        .foregroundColor(.blue)
+                    
+                    Text("Auto-Organize All Jokes")
                         .font(.title2)
                         .fontWeight(.bold)
                     
-                    Text("\(unorganizedJokes.count) unorganized jokes")
+                    Text("\(jokes.count) jokes will be organized into folders")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color(.systemGray6))
+                
+                // Edit Categories Section
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Categories")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        Button("Reset to Defaults") {
+                            AutoOrganizeService.resetToDefaults()
+                            categories = AutoOrganizeService.getUserCategories()
+                        }
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top)
+                    
+                    Text("Edit categories before organizing. Jokes will be sorted based on keywords.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal)
+                    
+                    // Add New Category
+                    HStack(spacing: 8) {
+                        TextField("Add new category...", text: $newCategory)
+                            .textFieldStyle(.roundedBorder)
+                        
+                        Button(action: addCategory) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                        }
+                        .disabled(newCategory.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    .padding(.horizontal)
+                }
+                
+                // Category List
+                List {
+                    ForEach(categories, id: \.self) { category in
+                        HStack(spacing: 12) {
+                            Image(systemName: "folder.fill")
+                                .foregroundColor(.orange)
+                            
+                            Text(category)
+                                .font(.body)
+                            
+                            Spacer()
+                            
+                            // Show joke count for this category
+                            let count = jokes.filter { $0.folder?.name == category }.count
+                            if count > 0 {
+                                Text("\(count)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(Color(.systemGray5))
+                                    .cornerRadius(10)
+                            }
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                removeCategory(category)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                    }
+                    .onMove(perform: moveCategories)
+                }
+                .listStyle(.plain)
+                
+                // Organize Button
+                VStack(spacing: 12) {
+                    Button(action: organizeAllJokes) {
+                        HStack(spacing: 12) {
+                            if isOrganizing {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            } else {
+                                Image(systemName: "sparkles")
+                            }
+                            
+                            Text(isOrganizing ? "Organizing..." : "Organize All Jokes")
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(categories.isEmpty ? Color.gray : Color.blue)
+                        .cornerRadius(12)
+                    }
+                    .disabled(categories.isEmpty || isOrganizing)
+                    .padding(.horizontal)
+                    
+                    Text("This will sort all \(jokes.count) jokes into folders based on content")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
                 .padding()
                 .background(Color(.systemBackground))
-                
-                Divider()
-                
-                ScrollView {
-                    VStack(spacing: 16) {
-                        // Auto-Organize Button
-                        if !unorganizedJokes.isEmpty {
-                            Button(action: performAutoOrganize) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "wand.and.stars")
-                                    Text("Auto-Organize All")
-                                        .fontWeight(.semibold)
-                                    Spacer()
-                                }
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(12)
-                                .background(Color.blue)
-                                .cornerRadius(10)
-                            }
-                            .padding()
-                        }
-                        
-                        // Unorganized Jokes List
-                        if !unorganizedJokes.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Select Category for Each Joke")
-                                    .font(.headline)
-                                    .padding(.horizontal)
-                                
-                                ForEach(unorganizedJokes) { joke in
-                                    JokeOrganizeCard(
-                                        joke: joke,
-                                        onSelectCategory: { category in
-                                            joke.folder = folders.first { $0.name == category }
-                                            if joke.folder == nil {
-                                                let newFolder = JokeFolder(name: category)
-                                                modelContext.insert(newFolder)
-                                                joke.folder = newFolder
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                            .padding()
-                        } else {
-                            VStack(spacing: 16) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 50))
-                                    .foregroundColor(.green)
-                                
-                                Text("All Jokes Organized!")
-                                    .font(.headline)
-                                
-                                Text("Great job! All your jokes have been categorized.")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                            }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .padding()
-                        }
-                        
-                        Divider()
-                            .padding(.vertical, 8)
-                        
-                        // Manage Categories Section
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Manage Categories")
-                                .font(.headline)
-                                .padding(.horizontal)
-                            
-                            // Add Category
-                            HStack(spacing: 8) {
-                                TextField("New category name", text: $newCategory)
-                                    .textFieldStyle(.roundedBorder)
-                                
-                                Button(action: addNewCategory) {
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.title3)
-                                        .foregroundColor(.blue)
-                                }
-                                .disabled(newCategory.trimmingCharacters(in: .whitespaces).isEmpty)
-                            }
-                            .padding(.horizontal)
-                            
-                            // Category List
-                            VStack(alignment: .leading, spacing: 8) {
-                                ForEach(categories, id: \.self) { category in
-                                    HStack(spacing: 12) {
-                                        Image(systemName: "folder.fill")
-                                            .foregroundColor(.orange)
-                                            .frame(width: 20)
-                                        
-                                        Text(category)
-                                            .font(.subheadline)
-                                        
-                                        Spacer()
-                                        
-                                        if !AutoOrganizeService.defaultCategories.contains(category) {
-                                            Button(action: { removeCategory(category) }) {
-                                                Image(systemName: "xmark.circle.fill")
-                                                    .foregroundColor(.red)
-                                                    .font(.body)
-                                            }
-                                        }
-                                    }
-                                    .padding(8)
-                                    .background(Color(.systemGray6))
-                                    .cornerRadius(6)
-                                }
-                            }
-                            .padding(.horizontal)
-                        }
-                        .padding()
-                    }
-                }
             }
+            .navigationTitle("Auto-Organize")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    EditButton()
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
                 }
             }
-            .alert("Organization Complete", isPresented: $showResult) {
-                Button("OK") { showResult = false }
+            .onAppear {
+                categories = AutoOrganizeService.getUserCategories()
+            }
+            .alert("Organization Complete!", isPresented: $showingResult) {
+                Button("OK") {
+                    dismiss()
+                }
             } message: {
-                Text("\(organizationResult.organized) jokes organized automatically\n\(organizationResult.suggested) jokes need manual categorization")
+                Text("Successfully organized \(organizedCount) jokes into \(categories.count) categories!")
             }
         }
     }
     
-    private func performAutoOrganize() {
-        organizationResult = AutoOrganizeService.autoOrganizeAll(
-            jokes: unorganizedJokes,
-            folders: folders,
-            modelContext: modelContext
-        )
-        showResult = true
-    }
-    
-    private func addNewCategory() {
+    private func addCategory() {
         let trimmed = newCategory.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         
-        AutoOrganizeService.addCategory(trimmed)
-        categories = AutoOrganizeService.getUserCategories()
+        if !categories.contains(trimmed) {
+            categories.append(trimmed)
+            AutoOrganizeService.saveUserCategories(categories)
+        }
         newCategory = ""
     }
     
     private func removeCategory(_ category: String) {
-        AutoOrganizeService.removeCategory(category)
-        categories = AutoOrganizeService.getUserCategories()
+        categories.removeAll { $0 == category }
+        AutoOrganizeService.saveUserCategories(categories)
     }
-}
-
-// MARK: - Joke Organization Card
-
-struct JokeOrganizeCard: View {
-    let joke: Joke
-    let onSelectCategory: (String) -> Void
     
-    @State private var showMenu = false
-    let categories = AutoOrganizeService.getUserCategories()
+    private func moveCategories(from source: IndexSet, to destination: Int) {
+        categories.move(fromOffsets: source, toOffset: destination)
+        AutoOrganizeService.saveUserCategories(categories)
+    }
     
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(joke.title)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .lineLimit(2)
+    private func organizeAllJokes() {
+        isOrganizing = true
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            organizedCount = AutoOrganizeService.organizeAllJokes(
+                jokes: jokes,
+                categories: categories,
+                folders: folders,
+                modelContext: modelContext
+            )
             
-            Text(joke.content)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .lineLimit(2)
-            
-            HStack(spacing: 8) {
-                Menu {
-                    ForEach(categories, id: \.self) { category in
-                        Button(action: { onSelectCategory(category) }) {
-                            Text(category)
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "folder.badge.plus")
-                        Text("Select Category")
-                            .font(.subheadline)
-                        Spacer()
-                        Image(systemName: "chevron.down")
-                            .font(.caption2)
-                    }
-                    .foregroundColor(.blue)
-                }
-                
-                Spacer()
-            }
+            isOrganizing = false
+            showingResult = true
         }
-        .padding(12)
-        .background(Color(.systemGray6))
-        .cornerRadius(8)
-        .padding(.horizontal)
     }
 }
 
 #Preview {
     AutoOrganizeView()
-        .modelContainer(for: Joke.self, inMemory: true)
+        .modelContainer(for: [Joke.self, JokeFolder.self], inMemory: true)
 }
