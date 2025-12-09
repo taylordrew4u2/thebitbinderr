@@ -27,16 +27,13 @@ struct JokesView: View {
     @State private var exportedPDFURL: URL?
     @State private var selectedPhotos: [PhotosPickerItem] = []
     @State private var isProcessingImages = false
-    @State private var showingJokeValidation = false
-    @State private var jokeCandidates: [JokeImportCandidate] = []
-    @State private var currentCandidateIndex = 0
     
     var filteredJokes: [Joke] {
         if searchText.isEmpty {
             if let folder = selectedFolder {
                 return jokes.filter { $0.folder?.id == folder.id }
             }
-            return jokes
+            return jokes.filter { $0.folder == nil }
         } else {
             let filtered = jokes.filter { joke in
                 joke.title.localizedCaseInsensitiveContains(searchText) ||
@@ -68,6 +65,13 @@ struct JokesView: View {
                                     isSelected: selectedFolder?.id == folder.id,
                                     action: { selectedFolder = folder }
                                 )
+                                .contextMenu {
+                                    Button(role: .destructive) {
+                                        deleteFolder(folder)
+                                    } label: {
+                                        Label("Delete Folder", systemImage: "trash")
+                                    }
+                                }
                             }
                         }
                         .padding(.horizontal)
