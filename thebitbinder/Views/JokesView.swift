@@ -655,7 +655,7 @@ struct JokesView: View {
             guard let transcription = importData["transcription"],
                   !transcription.isEmpty else { continue }
             
-            let filename = importData["filename"] ?? "Voice Memo"
+            _ = importData["filename"] ?? "Voice Memo"
             let title = AudioTranscriptionService.generateTitle(from: transcription)
             
             // Check for duplicates

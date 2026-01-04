@@ -20,13 +20,15 @@ struct NotebookView: View {
     @State private var cameraImage: UIImage?
     
     private func delete(_ photo: NotebookPhotoRecord) {
+        // Remove file from disk if it exists
         let url = FileManager.documentsDirectory.appendingPathComponent(photo.fileURL)
         try? FileManager.default.removeItem(at: url)
+        // Remove from SwiftData
         modelContext.delete(photo)
         try? modelContext.save()
     }
     
-    let columns = [GridItem(.adaptive(minimum: 110), spacing: 12)]
+    let columns = [GridItem(.adaptive(minimum: 100), spacing: 16)]
     
     var body: some View {
         NavigationStack {
@@ -37,49 +39,56 @@ struct NotebookView: View {
                             Circle()
                                 .fill(Color.blue.opacity(0.1))
                                 .frame(width: 100, height: 100)
-                            Image(systemName: "photo.fill")
+                            Image(systemName: "book.fill")
                                 .font(.system(size: 44))
                                 .foregroundStyle(.blue)
                         }
                         
                         VStack(spacing: 8) {
-                            Text("No photos yet")
+                            Text("No pages saved yet")
                                 .font(.title3)
                                 .fontWeight(.semibold)
-                            Text("Add photos of your notes and ideas")
+                            Text("Take photos of your physical joke notebook pages to keep a backup in the app")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 40)
                 } else {
                     ScrollView {
-                        LazyVGrid(columns: columns, spacing: 12) {
+                        LazyVGrid(columns: columns, spacing: 16) {
                             ForEach(photos, id: \.id) { photo in
                                 let imageURL = FileManager.documentsDirectory.appendingPathComponent(photo.fileURL)
-                                PhotoGridItem(imageURL: imageURL) {
-                                    showingDetail = photo
-                                } onDelete: {
-                                    delete(photo)
-                                }
+                                CachedImageView(fileURL: imageURL,
+                                                placeholder: AnyView(Color.gray.frame(minWidth: 100, minHeight: 100).overlay(Text("Loading").foregroundColor(.white))),
+                                                contentMode: .fill,
+                                                cornerRadius: 8)
+                                    .frame(minWidth: 100, minHeight: 100)
+                                    .clipped()
+                                    .onTapGesture { showingDetail = photo }
+                                    .contextMenu {
+                                        Button(role: .destructive) { delete(photo) } label: { Label("Delete", systemImage: "trash") }
+                                    }
                             }
                         }
                         .padding()
                     }
                 }
             }
-            .navigationTitle("Photos")
+            .navigationTitle("Notebook Saver")
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     PhotosPicker(selection: $pickedPhotoItem,
                                  matching: .images,
                                  photoLibrary: .shared()) {
-                        Image(systemName: "photo.badge.plus")
+                        Label("Add Photo", systemImage: "photo.on.rectangle")
                     }
                     Button {
                         showingCamera = true
                     } label: {
-                        Image(systemName: "camera")
+                        Label("Camera", systemImage: "camera")
                     }
                 }
             }
@@ -150,49 +159,16 @@ struct NotebookView: View {
     }
 }
 
-// MARK: - Photo Grid Item
-
-struct PhotoGridItem: View {
-    let imageURL: URL
-    let onTap: () -> Void
-    let onDelete: () -> Void
-    
-    var body: some View {
-        CachedImageView(
-            fileURL: imageURL,
-            placeholder: AnyView(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(UIColor.systemGray5))
-                    .overlay(
-                        ProgressView()
-                    )
-            ),
-            contentMode: .fill,
-            cornerRadius: 12
-        )
-        .frame(minWidth: 110, minHeight: 110)
-        .aspectRatio(1, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-        .onTapGesture(perform: onTap)
-        .contextMenu {
-            Button(role: .destructive, action: onDelete) {
-                Label("Delete", systemImage: "trash")
-            }
-        }
-    }
-}
-
-// MARK: - Detail View
-
 struct NotebookDetailView: View {
     @Bindable var photo: NotebookPhotoRecord
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     
     private func deleteCurrent() {
+        // Remove file
         let url = FileManager.documentsDirectory.appendingPathComponent(photo.fileURL)
         try? FileManager.default.removeItem(at: url)
+        // Delete model and dismiss
         modelContext.delete(photo)
         try? modelContext.save()
         dismiss()
@@ -200,71 +176,47 @@ struct NotebookDetailView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    let imageURL = FileManager.documentsDirectory.appendingPathComponent(photo.fileURL)
-                    if let uiImage = UIImage(contentsOfFile: imageURL.path) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFit()
-                            .cornerRadius(16)
-                            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-                            .padding(.horizontal)
-                    } else {
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(UIColor.systemGray5))
-                            .frame(height: 250)
-                            .overlay(
-                                VStack(spacing: 8) {
-                                    Image(systemName: "photo")
-                                        .font(.largeTitle)
-                                    Text("Image not found")
-                                        .font(.caption)
-                                }
-                                .foregroundStyle(.secondary)
-                            )
-                            .padding(.horizontal)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Caption")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        TextField("Add a caption...", text: $photo.caption, axis: .vertical)
-                            .textFieldStyle(.plain)
-                            .padding()
-                            .background(Color(UIColor.systemGray6))
-                            .cornerRadius(12)
-                    }
-                    .padding(.horizontal)
-                    
-                    Spacer()
+            VStack(spacing: 20) {
+                let imageURL = FileManager.documentsDirectory.appendingPathComponent(photo.fileURL)
+                if let uiImage = UIImage(contentsOfFile: imageURL.path) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .cornerRadius(12)
+                        .padding()
+                } else {
+                    Color.gray
+                        .frame(height: 200)
+                        .cornerRadius(12)
+                        .overlay(Text("Image not found").foregroundColor(.white))
+                        .padding()
                 }
-                .padding(.top)
+                TextField("Caption", text: $photo.caption)
+                    .textFieldStyle(.roundedBorder)
+                    .padding(.horizontal)
+                
+                Spacer()
             }
-            .navigationTitle("Photo")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Notebook Page")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(role: .destructive) {
                         deleteCurrent()
                     } label: {
-                        Image(systemName: "trash")
-                            .foregroundStyle(.red)
+                        Label("Delete", systemImage: "trash")
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
-                    .fontWeight(.semibold)
                 }
             }
         }
     }
 }
 
-// MARK: - Camera View
+// MARK: - CameraView (UIKit wrapped)
 
 struct CameraView: UIViewControllerRepresentable {
     @Binding var image: UIImage?
@@ -277,7 +229,9 @@ struct CameraView: UIViewControllerRepresentable {
         return picker
     }
     
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {
+        // no update needed
+    }
     
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)

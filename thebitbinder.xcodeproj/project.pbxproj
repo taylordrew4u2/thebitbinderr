@@ -6,34 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		BA5B4FE12F0A6BF4009310B2 /* VoiceMemoImport.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BA5B4FD72F0A6BF4009310B2 /* VoiceMemoImport.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-/* End PBXBuildFile section */
-
-/* Begin PBXContainerItemProxy section */
-		BA5B4FDF2F0A6BF4009310B2 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = BAB3D0492EDF80F5007295C1 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = BA5B4FD62F0A6BF4009310B2;
-			remoteInfo = VoiceMemoImport;
-		};
-/* End PBXContainerItemProxy section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		BA5B4FE62F0A6BF4009310B2 /* Embed Foundation Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				BA5B4FE12F0A6BF4009310B2 /* VoiceMemoImport.appex in Embed Foundation Extensions */,
-			);
-			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
 		BA5B4FD72F0A6BF4009310B2 /* VoiceMemoImport.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VoiceMemoImport.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		BAB3D0522EDF80F5007295C1 /* thebitbinder.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = thebitbinder.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -143,12 +115,10 @@
 				BAB3D04E2EDF80F5007295C1 /* Sources */,
 				BAB3D04F2EDF80F5007295C1 /* Frameworks */,
 				BAB3D0502EDF80F5007295C1 /* Resources */,
-				BA5B4FE62F0A6BF4009310B2 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				BA5B4FE02F0A6BF4009310B2 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				BAB3D0542EDF80F5007295C1 /* thebitbinder */,
@@ -231,14 +201,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		BA5B4FE02F0A6BF4009310B2 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = BA5B4FD62F0A6BF4009310B2 /* VoiceMemoImport */;
-			targetProxy = BA5B4FDF2F0A6BF4009310B2 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		BA5B4FE32F0A6BF4009310B2 /* Debug */ = {
