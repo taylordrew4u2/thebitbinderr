@@ -1,0 +1,10 @@
+import UIKit
+import BackgroundTasks
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        BackgroundTaskRegistrar.register()
+        return true
+    }
+}

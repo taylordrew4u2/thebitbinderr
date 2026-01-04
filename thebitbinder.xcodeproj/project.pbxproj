@@ -6,11 +6,47 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		BA5B4FE12F0A6BF4009310B2 /* VoiceMemoImport.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BA5B4FD72F0A6BF4009310B2 /* VoiceMemoImport.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BA5B4FDF2F0A6BF4009310B2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BAB3D0492EDF80F5007295C1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BA5B4FD62F0A6BF4009310B2;
+			remoteInfo = VoiceMemoImport;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BA5B4FE62F0A6BF4009310B2 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BA5B4FE12F0A6BF4009310B2 /* VoiceMemoImport.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		BA5B4FD72F0A6BF4009310B2 /* VoiceMemoImport.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VoiceMemoImport.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		BAB3D0522EDF80F5007295C1 /* thebitbinder.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = thebitbinder.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		BA5B52392F0A72C4009310B2 /* Exceptions for "VoiceMemoImport" folder in "thebitbinder" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ShareViewController.swift,
+			);
+			target = BAB3D0512EDF80F5007295C1 /* thebitbinder */;
+		};
 		BAB3D05F2EDF80F6007295C1 /* Exceptions for "thebitbinder" folder in "thebitbinder" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -21,6 +57,14 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		BA5B4FD82F0A6BF4009310B2 /* VoiceMemoImport */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BA5B52392F0A72C4009310B2 /* Exceptions for "VoiceMemoImport" folder in "thebitbinder" target */,
+			);
+			path = VoiceMemoImport;
+			sourceTree = "<group>";
+		};
 		BAB3D0542EDF80F5007295C1 /* thebitbinder */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -32,6 +76,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		BA5B4FD42F0A6BF4009310B2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BAB3D04F2EDF80F5007295C1 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -46,6 +97,7 @@
 			isa = PBXGroup;
 			children = (
 				BAB3D0542EDF80F5007295C1 /* thebitbinder */,
+				BA5B4FD82F0A6BF4009310B2 /* VoiceMemoImport */,
 				BAB3D0532EDF80F5007295C1 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,6 +106,7 @@
 			isa = PBXGroup;
 			children = (
 				BAB3D0522EDF80F5007295C1 /* thebitbinder.app */,
+				BA5B4FD72F0A6BF4009310B2 /* VoiceMemoImport.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,6 +114,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		BA5B4FD62F0A6BF4009310B2 /* VoiceMemoImport */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BA5B4FE22F0A6BF4009310B2 /* Build configuration list for PBXNativeTarget "VoiceMemoImport" */;
+			buildPhases = (
+				BA5B4FD32F0A6BF4009310B2 /* Sources */,
+				BA5B4FD42F0A6BF4009310B2 /* Frameworks */,
+				BA5B4FD52F0A6BF4009310B2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BA5B4FD82F0A6BF4009310B2 /* VoiceMemoImport */,
+			);
+			name = VoiceMemoImport;
+			packageProductDependencies = (
+			);
+			productName = VoiceMemoImport;
+			productReference = BA5B4FD72F0A6BF4009310B2 /* VoiceMemoImport.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		BAB3D0512EDF80F5007295C1 /* thebitbinder */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = BAB3D0602EDF80F6007295C1 /* Build configuration list for PBXNativeTarget "thebitbinder" */;
@@ -68,10 +143,12 @@
 				BAB3D04E2EDF80F5007295C1 /* Sources */,
 				BAB3D04F2EDF80F5007295C1 /* Frameworks */,
 				BAB3D0502EDF80F5007295C1 /* Resources */,
+				BA5B4FE62F0A6BF4009310B2 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BA5B4FE02F0A6BF4009310B2 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				BAB3D0542EDF80F5007295C1 /* thebitbinder */,
@@ -90,9 +167,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1620;
+				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2610;
 				TargetAttributes = {
+					BA5B4FD62F0A6BF4009310B2 = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					BAB3D0512EDF80F5007295C1 = {
 						CreatedOnToolsVersion = 16.2;
 					};
@@ -113,11 +193,19 @@
 			projectRoot = "";
 			targets = (
 				BAB3D0512EDF80F5007295C1 /* thebitbinder */,
+				BA5B4FD62F0A6BF4009310B2 /* VoiceMemoImport */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		BA5B4FD52F0A6BF4009310B2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BAB3D0502EDF80F5007295C1 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -128,6 +216,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		BA5B4FD32F0A6BF4009310B2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BAB3D04E2EDF80F5007295C1 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -137,7 +232,76 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		BA5B4FE02F0A6BF4009310B2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BA5B4FD62F0A6BF4009310B2 /* VoiceMemoImport */;
+			targetProxy = BA5B4FDF2F0A6BF4009310B2 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		BA5B4FE32F0A6BF4009310B2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = R44WG942GS;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(SRCROOT)/VoiceMemoImport-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = VoiceMemoImport;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "The-BitBinder.thebitbinder.VoiceMemoImport";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BA5B4FE42F0A6BF4009310B2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = R44WG942GS;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(SRCROOT)/VoiceMemoImport-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = VoiceMemoImport;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "The-BitBinder.thebitbinder.VoiceMemoImport";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		BAB3D0612EDF80F6007295C1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -148,7 +312,7 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = R44WG942GS;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = thebitbinder/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -164,7 +328,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 3;
 				PRODUCT_BUNDLE_IDENTIFIER = "The-BitBinder.thebitbinder";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -185,7 +349,7 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = R44WG942GS;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = thebitbinder/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -201,7 +365,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 3;
 				PRODUCT_BUNDLE_IDENTIFIER = "The-BitBinder.thebitbinder";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -335,6 +499,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		BA5B4FE22F0A6BF4009310B2 /* Build configuration list for PBXNativeTarget "VoiceMemoImport" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BA5B4FE32F0A6BF4009310B2 /* Debug */,
+				BA5B4FE42F0A6BF4009310B2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		BAB3D04C2EDF80F5007295C1 /* Build configuration list for PBXProject "thebitbinder" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

@@ -52,8 +52,26 @@ class TextRecognitionService {
         request.usesLanguageCorrection = true
         
         try requestHandler.perform([request])
+        var observations = request.results ?? []
+        if observations.isEmpty {
+            // Fallback: try fast recognition if accurate returned nothing
+            let fastRequest = VNRecognizeTextRequest()
+            fastRequest.recognitionLevel = .fast
+            fastRequest.usesLanguageCorrection = true
+            try? requestHandler.perform([fastRequest])
+            observations = fastRequest.results ?? []
+        }
+        if observations.isEmpty {
+            // Locale-hinted pass for en-US
+            let localeRequest = VNRecognizeTextRequest()
+            localeRequest.recognitionLevel = .accurate
+            localeRequest.usesLanguageCorrection = true
+            localeRequest.recognitionLanguages = ["en-US"]
+            try? requestHandler.perform([localeRequest])
+            observations = localeRequest.results ?? []
+        }
         
-        guard let observations = request.results else {
+        if observations.isEmpty {
             print("❌ OCR: No results")
             throw TextRecognitionError.noTextFound
         }
@@ -68,6 +86,24 @@ class TextRecognitionService {
         return recognizedText
     }
     
+    /// Light-weight OCR repair to improve extraction fidelity
+    static func repairOCRText(_ text: String) -> String {
+        var t = text
+        // Normalize line endings
+        t = t.replacingOccurrences(of: "\r\n|\r", with: "\n", options: .regularExpression)
+        // Remove hyphenated line breaks like "hy-\n phen"
+        t = t.replacingOccurrences(of: "-\\s*\\n", with: "", options: .regularExpression)
+        // Collapse 3+ newlines to 2
+        t = t.replacingOccurrences(of: "\n{3,}", with: "\n\n", options: .regularExpression)
+        // Trim trailing spaces before newline
+        t = t.replacingOccurrences(of: "[ \t]+\n", with: "\n", options: .regularExpression)
+        // Merge obvious broken lines: if previous line does not end with punctuation, join with a space
+        t = t.replacingOccurrences(of: "(?<=[^.!?\\-])\n(?=[a-z])", with: " ", options: .regularExpression)
+        // Normalize multiple spaces
+        t = t.replacingOccurrences(of: "[ \t]{2,}", with: " ", options: .regularExpression)
+        return t
+    }
+    
     static func extractJokes(from text: String) -> [String] {
         print("📝 EXTRACT: Input \(text.count) chars")
         guard !text.isEmpty else {
@@ -75,7 +111,9 @@ class TextRecognitionService {
             return []
         }
         
-        let preview = String(text.prefix(100)).replacingOccurrences(of: "\n", with: "\\n")
+        let cleaned = repairOCRText(text)
+        
+        let preview = String(cleaned.prefix(100)).replacingOccurrences(of: "\n", with: "\\n")
         print("📝 EXTRACT: Preview: \(preview)")
         
         var jokes: [String] = []
@@ -84,16 +122,16 @@ class TextRecognitionService {
         print("📝 Method 1: Numbered lists")
         let pattern = #"(?:^|\n)\s*\d+[\.\)]\s*"#
         if let regex = try? NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines]) {
-            let range = NSRange(text.startIndex..., in: text)
-            let matches = regex.matches(in: text, options: [], range: range)
+            let range = NSRange(cleaned.startIndex..., in: cleaned)
+            let matches = regex.matches(in: cleaned, options: [], range: range)
             print("📝 Found \(matches.count) numbered markers")
             
             if matches.count >= 2 {
-                var lastEnd = text.startIndex
+                var lastEnd = cleaned.startIndex
                 for (i, match) in matches.enumerated() {
-                    if let r = Range(match.range, in: text) {
+                    if let r = Range(match.range, in: cleaned) {
                         if i > 0 {
-                            let joke = String(text[lastEnd..<r.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                            let joke = String(cleaned[lastEnd..<r.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
                             if joke.count >= 5 {
                                 print("✅ Joke \(i): \(joke.prefix(30))...")
                                 jokes.append(joke)
@@ -102,7 +140,7 @@ class TextRecognitionService {
                         lastEnd = r.upperBound
                     }
                 }
-                let final = String(text[lastEnd...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                let final = String(cleaned[lastEnd...]).trimmingCharacters(in: .whitespacesAndNewlines)
                 if final.count >= 5 {
                     print("✅ Final: \(final.prefix(30))...")
                     jokes.append(final)
@@ -114,43 +152,9 @@ class TextRecognitionService {
             }
         }
         
-        // Method 1.5: Bullet points (•, -, *, etc.) - Get FULL text until next bullet
-        print("📝 Method 1.5: Bullet points")
-        let bulletPattern = #"(?:^|\n)\s*[•\-\*►▸●○◦▪⁃■□★☆>]\s*"#
-        if let bulletRegex = try? NSRegularExpression(pattern: bulletPattern, options: [.anchorsMatchLines]) {
-            let bulletRange = NSRange(text.startIndex..., in: text)
-            let bulletMatches = bulletRegex.matches(in: text, options: [], range: bulletRange)
-            print("📝 Found \(bulletMatches.count) bullet markers")
-            
-            if bulletMatches.count >= 2 {
-                var bulletLastEnd = text.startIndex
-                for (i, match) in bulletMatches.enumerated() {
-                    if let r = Range(match.range, in: text) {
-                        if i > 0 {
-                            let joke = String(text[bulletLastEnd..<r.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
-                            if joke.count >= 5 {
-                                print("✅ Bullet \(i): \(joke.prefix(50))...")
-                                jokes.append(joke)
-                            }
-                        }
-                        bulletLastEnd = r.upperBound
-                    }
-                }
-                let bulletFinal = String(text[bulletLastEnd...]).trimmingCharacters(in: .whitespacesAndNewlines)
-                if bulletFinal.count >= 5 {
-                    print("✅ Final bullet: \(bulletFinal.prefix(50))...")
-                    jokes.append(bulletFinal)
-                }
-                if !jokes.isEmpty {
-                    print("📝 Method 1.5 SUCCESS: \(jokes.count) jokes from bullets")
-                    return jokes
-                }
-            }
-        }
-        
         // Method 2: Double line breaks
         print("📝 Method 2: Paragraphs")
-        let paras = text.components(separatedBy: "\n\n")
+        let paras = cleaned.components(separatedBy: "\n{2,}")
         print("📝 Found \(paras.count) paragraphs")
         if paras.count >= 2 {
             for p in paras {
@@ -166,18 +170,27 @@ class TextRecognitionService {
             }
         }
         
-        // Method 3: Single line breaks
-        print("📝 Method 3: Lines")
-        let lines = text.components(separatedBy: "\n")
+        // Method 3: Group by single blank lines (accumulate contiguous lines)
+        print("📝 Method 3: Line groups")
+        let lines = cleaned.components(separatedBy: "\n")
+        let boundaryMarkers: Set<String> = ["---", "***", "—", "— — —", "[break]", "###"]
         print("📝 Found \(lines.count) lines")
         if lines.count >= 2 {
+            var currentBlock: [String] = []
+            func flushBlock() {
+                let t = currentBlock.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+                if t.count >= 5 { jokes.append(t) }
+                currentBlock.removeAll()
+            }
             for l in lines {
-                let t = l.trimmingCharacters(in: .whitespacesAndNewlines)
-                if t.count >= 5 {
-                    print("✅ Line: \(t.prefix(30))...")
-                    jokes.append(t)
+                let trimmed = l.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty || boundaryMarkers.contains(trimmed) {
+                    if !currentBlock.isEmpty { flushBlock() }
+                } else {
+                    currentBlock.append(trimmed)
                 }
             }
+            if !currentBlock.isEmpty { flushBlock() }
             if !jokes.isEmpty {
                 print("📝 Method 3 SUCCESS: \(jokes.count) jokes")
                 return jokes
@@ -186,13 +199,13 @@ class TextRecognitionService {
         
         // Method 4: Sentences
         print("📝 Method 4: Sentences")
-        let sents = text.components(separatedBy: CharacterSet(charactersIn: ".!?"))
+        let sents = cleaned.components(separatedBy: CharacterSet(charactersIn: ".!?"))
         var curr = ""
         for s in sents {
             let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
             if !t.isEmpty {
                 curr += t + ". "
-                if curr.count >= 25 {
+                if curr.count >= 50 {
                     print("✅ Sent: \(curr.prefix(30))...")
                     jokes.append(curr.trimmingCharacters(in: .whitespacesAndNewlines))
                     curr = ""
@@ -210,7 +223,7 @@ class TextRecognitionService {
         
         // Method 5: Whole text
         print("📝 Method 5: Whole text")
-        let whole = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let whole = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
         if whole.count >= 3 {
             print("✅ Whole: \(whole.prefix(30))...")
             jokes.append(whole)
@@ -227,15 +240,18 @@ class TextRecognitionService {
         let trimmed = jokeContent.trimmingCharacters(in: .whitespacesAndNewlines)
         
         // Minimum length check - avoid incomplete jokes
-        let minimumLength = 15
-        if trimmed.count < minimumLength {
-            print("⚠️ VALIDATION: Joke too short (\(trimmed.count) chars): \(trimmed.prefix(50))...")
-            return (title: "", isValid: false)
-        }
+        let minimumLength = 12
         
         // Check for incomplete sentences (ends with only partial punctuation or no punctuation)
         let lastChar = trimmed.last ?? " "
         let endsWithoutPunctuation = !trimmed.hasSuffix(".") && !trimmed.hasSuffix("!") && !trimmed.hasSuffix("?")
+        
+        let endsWithPunctuation = trimmed.hasSuffix(".") || trimmed.hasSuffix("!") || trimmed.hasSuffix("?")
+        if trimmed.count < minimumLength && !(endsWithPunctuation && trimmed.count >= 10) {
+            print("⚠️ VALIDATION: Joke too short (relaxed check)")
+            return (title: "", isValid: false)
+        }
+        
         let looksIncomplete = trimmed.contains("...") || trimmed.contains("…") || 
                              (lastChar.isLetter && endsWithoutPunctuation && trimmed.count < 100)
         
@@ -461,5 +477,14 @@ extension TextRecognitionService {
         }
         
         return JokeStructureAnalysis(score: score, patterns: patterns, isLikelyComplete: score >= 40)
+    }
+}
+
+extension String {
+    /// Normalized prefix used for duplicate detection
+    func normalizedPrefix(_ length: Int = 120) -> String {
+        let lower = self.lowercased()
+        let collapsed = lower.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        return String(collapsed.prefix(length))
     }
 }

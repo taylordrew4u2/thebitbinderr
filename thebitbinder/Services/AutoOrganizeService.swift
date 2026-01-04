@@ -96,9 +96,112 @@ let doubleMeaningWords: [(String, String)] = [
 private let jokePatterns: [String: [String]] = [:]
 
 class AutoOrganizeService {
+    // MARK: - Public Auto-Organize API
+    /// Analyzes unorganized jokes, hydrates them with categorization results, and
+    /// automatically files high-confidence jokes into folders.
+    /// - Parameters:
+    ///   - unorganizedJokes: Jokes that currently have no folder assigned.
+    ///   - existingFolders: Existing folders to match or expand.
+    ///   - modelContext: SwiftData model context used to persist changes.
+    ///   - completion: Called on the main thread with counts: (organized, suggested).
+    static func autoOrganizeJokes(
+        unorganizedJokes: [Joke],
+        existingFolders: [JokeFolder],
+        modelContext: ModelContext,
+        completion: @escaping (Int, Int) -> Void
+    ) {
+        var organized = 0
+        var suggested = 0
+
+        // Build a mutable lookup for folders by name so we can create-once and reuse.
+        var foldersByName: [String: JokeFolder] = Dictionary(uniqueKeysWithValues: existingFolders.map { ($0.name, $0) })
+
+        for joke in unorganizedJokes {
+            let normalized = normalize(joke.content)
+
+            // Score potential topical categories
+            let topicMatches = scoreCategories(in: normalized)
+            // Analyze style and structure for richer metadata and reasoning
+            let style = analyzeStyle(in: normalized)
+            let structure = analyzeJokeStructure(joke.content)
+
+            // Map TopicMatch -> CategoryMatch with detailed reasoning and metadata
+            let matches: [CategoryMatch] = topicMatches.map { match in
+                CategoryMatch(
+                    category: match.category,
+                    confidence: match.confidence,
+                    reasoning: reasoning(for: match, style: style, structure: structure),
+                    matchedKeywords: match.evidence,
+                    styleTags: style.tags,
+                    emotionalTone: style.tone,
+                    craftSignals: style.craftSignals,
+                    structureScore: structure.structureConfidence
+                )
+            }
+            .sorted { $0.confidence > $1.confidence }
+
+            // Hydrate the joke with the full set of matches for UI display and metadata
+            hydrate(joke, with: matches)
+
+            // Decide whether to auto-file or just suggest
+            if let top = matches.first, top.confidence >= confidenceThresholdForAutoOrganize {
+                let category = top.category
+                // Find or create folder
+                let folder: JokeFolder
+                if let existing = foldersByName[category] {
+                    folder = existing
+                } else {
+                    let newFolder = JokeFolder(name: category)
+                    foldersByName[category] = newFolder
+                    modelContext.insert(newFolder)
+                    folder = newFolder
+                }
+
+                // Assign and count as organized
+                joke.folder = folder
+                organized += 1
+            } else {
+                // Not high enough confidence to auto-file; count as suggested
+                suggested += 1
+            }
+        }
+
+        // Persist any changes (new folders, updated jokes)
+        do { try modelContext.save() } catch { /* Non-fatal: best effort */ }
+
+        // Return counts on main thread
+        DispatchQueue.main.async {
+            completion(organized, suggested)
+        }
+    }
+
+    /// Categorizes a single joke content into categories with detailed metadata.
+    /// - Parameter content: The joke content to categorize.
+    /// - Returns: An array of `CategoryMatch` representing the best matching categories.
+    static func categorize(content: String) -> [CategoryMatch] {
+        let normalized = normalize(content)
+        let topicMatches = scoreCategories(in: normalized)
+        let style = analyzeStyle(in: normalized)
+        let structure = analyzeJokeStructure(content)
+        let matches: [CategoryMatch] = topicMatches.map { match in
+            CategoryMatch(
+                category: match.category,
+                confidence: match.confidence,
+                reasoning: reasoning(for: match, style: style, structure: structure),
+                matchedKeywords: match.evidence,
+                styleTags: style.tags,
+                emotionalTone: style.tone,
+                craftSignals: style.craftSignals,
+                structureScore: structure.structureConfidence
+            )
+        }
+        .sorted { $0.confidence > $1.confidence }
+        return matches
+    }
+
     // MARK: - Configuration
-    private static let confidenceThresholdForAutoOrganize: Double = 0.55
-    private static let confidenceThresholdForSuggestion: Double = 0.25
+    private static let confidenceThresholdForAutoOrganize: Double = 0.40
+    private static let confidenceThresholdForSuggestion: Double = 0.20
     private static let multiCategoryThreshold: Double = 0.35
     
     // MARK: - Comedy Category Lexicon
@@ -119,6 +222,18 @@ class AutoOrganizeService {
         "Riddles": CategoryKeywords(keywords: [("riddle", 1.0), ("what has", 1.0), ("clever answer", 0.9), ("legs", 0.7), ("morning", 0.6), ("evening", 0.6)]),
         "Other": CategoryKeywords(keywords: [], weight: 0.2)
     ]
+    
+    /// Public accessor for available category names used for organizing jokes
+    static func getCategories() -> [String] {
+        // Expose keys of the internal categories lexicon, sorted alphabetically with "Other" last
+        let names = Array(categories.keys)
+        let sorted = names.sorted { a, b in
+            if a == "Other" { return false }
+            if b == "Other" { return true }
+            return a.localizedCaseInsensitiveCompare(b) == .orderedAscending
+        }
+        return sorted
+    }
     
     // MARK: - Style Lexicons
     private static let styleCueLexicon: [String: [String]] = [
@@ -162,130 +277,18 @@ class AutoOrganizeService {
         "Absurd Heighten": ["then suddenly", "escalated", "spiraled"]
     ]
     
-    // MARK: - Public API
-    static func categorizeJoke(_ joke: Joke) -> [CategoryMatch] {
-        let normalized = normalize(joke.title + " " + joke.content)
-        let style = analyzeStyle(in: normalized)
-        let structure = analyzeJokeStructure(normalized)
-        let topicMatches = scoreCategories(in: normalized)
-        var matches: [CategoryMatch] = []
-        
-        for match in topicMatches where match.confidence >= confidenceThresholdForSuggestion {
-            matches.append(
-                CategoryMatch(
-                    category: match.category,
-                    confidence: match.confidence,
-                    reasoning: reasoning(for: match, style: style, structure: structure),
-                    matchedKeywords: match.evidence,
-                    styleTags: style.tags,
-                    emotionalTone: style.tone,
-                    craftSignals: style.craftSignals,
-                    structureScore: style.structureScore
-                )
-            )
-        }
-        
-        if matches.isEmpty {
-            matches.append(CategoryMatch(
-                category: "Other",
-                confidence: 0.2,
-                reasoning: "No clear comedic cues detected — filing under Other for review.",
-                matchedKeywords: [],
-                styleTags: style.tags,
-                emotionalTone: style.tone,
-                craftSignals: style.craftSignals,
-                structureScore: style.structureScore
-            ))
-        }
-        
-        matches.sort { $0.confidence > $1.confidence }
-        hydrate(joke, with: matches)
-        return matches
+    // MARK: - Folder Management
+    /// Deletes a folder and saves the context. Jokes linked to this folder will be
+    /// automatically nullified due to the `.nullify` delete rule on the relationship.
+    static func deleteFolder(_ folder: JokeFolder, modelContext: ModelContext) throws {
+        modelContext.delete(folder)
+        try modelContext.save()
     }
-    
-    static func autoOrganizeJokes(
-        unorganizedJokes: [Joke],
-        existingFolders: [JokeFolder],
-        modelContext: ModelContext,
-        completion: @escaping (Int, Int) -> Void
-    ) {
-        var organized = 0
-        var suggested = 0
-        var folderMap = Dictionary(uniqueKeysWithValues: existingFolders.map { ($0.name, $0) })
-        
-        for joke in unorganizedJokes {
-            let matches = categorizeJoke(joke)
-            let top = matches.first
-            var category = top?.category ?? "Other"
-            
-            if let best = top, best.confidence >= confidenceThresholdForAutoOrganize {
-                // solid match
-            } else {
-                suggested += 1
-                if top == nil || top?.confidence ?? 0 < 0.15 {
-                    category = "Other"
-                }
-            }
-            
-            if folderMap[category] == nil {
-                let folder = JokeFolder(name: category)
-                modelContext.insert(folder)
-                folderMap[category] = folder
-                print("✅ AUTO-ORGANIZE: Created folder '\(category)'")
-            }
-            joke.folder = folderMap[category]
-            organized += 1
-        }
-        
-        _ = ensureRecentlyAddedFolder(existingFolders: existingFolders, modelContext: modelContext)
-        
-        do {
-            try modelContext.save()
-            print("✅ AUTO-ORGANIZE: Saved changes for \(organized) jokes")
-        } catch {
-            print("❌ AUTO-ORGANIZE SAVE FAILED: \(error.localizedDescription)")
-        }
-        
-        completion(organized, suggested)
+
+    /// Backwards-compatibility for call sites that used an uppercase method name.
+    static func DeleteFolder(_ folder: JokeFolder, modelContext: ModelContext) throws {
+        try deleteFolder(folder, modelContext: modelContext)
     }
-    
-    static func getCategories() -> [String] {
-        Array(categories.keys).sorted()
-    }
-    
-    static func assignJokeToFolder(_ joke: Joke, folderName: String, modelContext: ModelContext, autoSave: Bool = true) {
-        do {
-            let descriptor = FetchDescriptor<JokeFolder>()
-            var folders = try modelContext.fetch(descriptor)
-            if let existing = folders.first(where: { $0.name.caseInsensitiveCompare(folderName) == .orderedSame }) {
-                joke.folder = existing
-            } else {
-                let folder = JokeFolder(name: folderName)
-                modelContext.insert(folder)
-                joke.folder = folder
-                folders.append(folder)
-            }
-            if autoSave {
-                try modelContext.save()
-            }
-        } catch {
-            print("❌ Failed to assign joke: \(error.localizedDescription)")
-        }
-    }
-    
-    @discardableResult
-    static func ensureRecentlyAddedFolder(
-        existingFolders: [JokeFolder],
-        modelContext: ModelContext
-    ) -> JokeFolder {
-        if let folder = existingFolders.first(where: { $0.name == "Recently Added" }) {
-            return folder
-        }
-        let folder = JokeFolder(name: "Recently Added")
-        modelContext.insert(folder)
-        return folder
-    }
-    
     
     // MARK: - Advanced Text Reconstruction System
     
@@ -1044,4 +1047,3 @@ extension String {
         }
     }
 }
-

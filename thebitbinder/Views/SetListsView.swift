@@ -28,17 +28,28 @@ struct SetListsView: View {
         NavigationStack {
             Group {
                 if filteredSetLists.isEmpty {
-                    VStack(spacing: 20) {
-                        Image(systemName: "list.bullet.clipboard")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
-                        Text("No set lists yet")
-                            .font(.title2)
-                            .foregroundColor(.gray)
-                        Text("Create your first set list using the + button")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                    VStack(spacing: 24) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.blue.opacity(0.1))
+                                .frame(width: 100, height: 100)
+                            Image(systemName: "list.bullet.clipboard.fill")
+                                .font(.system(size: 44))
+                                .foregroundStyle(.blue)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            Text("No set lists yet")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                            Text("Create your first set list using the + button")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 40)
                 } else {
                     List {
                         ForEach(filteredSetLists) { setList in
@@ -80,19 +91,39 @@ struct SetListRowView: View {
     let setList: SetList
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(setList.name)
-                .font(.headline)
-            HStack {
-                Label("\(setList.jokeIDs.count) jokes", systemImage: "text.bubble")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Spacer()
-                Text(setList.dateModified, style: .date)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.blue.opacity(0.1))
+                    .frame(width: 44, height: 44)
+                Image(systemName: "list.bullet")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(.blue)
             }
+            
+            VStack(alignment: .leading, spacing: 6) {
+                Text(setList.name)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                
+                HStack(spacing: 16) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "text.bubble")
+                            .font(.caption2)
+                        Text("\(setList.jokeIDs.count) jokes")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.secondary)
+                    
+                    Text(setList.dateModified, format: .dateTime.month(.abbreviated).day())
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            
+            Spacer()
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 }

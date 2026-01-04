@@ -27,17 +27,26 @@ struct RecordingsView: View {
         NavigationStack {
             Group {
                 if filteredRecordings.isEmpty {
-                    VStack(spacing: 20) {
-                        Image(systemName: "mic.circle")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
-                        Text("No recordings yet")
-                            .font(.title2)
-                            .foregroundColor(.gray)
-                        Text("Record a set list to see it here")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                    VStack(spacing: 24) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.blue.opacity(0.1))
+                                .frame(width: 100, height: 100)
+                            Image(systemName: "mic.circle.fill")
+                                .font(.system(size: 50))
+                                .foregroundStyle(.blue)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            Text("No recordings yet")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                            Text("Record a set list to see it here")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
                         ForEach(filteredRecordings) { recording in
@@ -58,10 +67,8 @@ struct RecordingsView: View {
     private func deleteRecordings(at offsets: IndexSet) {
         for index in offsets {
             let recording = filteredRecordings[index]
-            // Delete the audio file
             let url = URL(fileURLWithPath: recording.fileURL)
             try? FileManager.default.removeItem(at: url)
-            // Delete the recording from database
             modelContext.delete(recording)
         }
     }
@@ -71,20 +78,40 @@ struct RecordingRowView: View {
     let recording: Recording
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(recording.name)
-                .font(.headline)
-            HStack {
-                Label(durationString(from: recording.duration), systemImage: "clock")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Spacer()
-                Text(recording.dateCreated, style: .date)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color.blue.opacity(0.1))
+                    .frame(width: 44, height: 44)
+                Image(systemName: "play.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.blue)
             }
+            
+            VStack(alignment: .leading, spacing: 6) {
+                Text(recording.name)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                
+                HStack(spacing: 16) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.caption2)
+                        Text(durationString(from: recording.duration))
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.secondary)
+                    
+                    Text(recording.dateCreated, format: .dateTime.month(.abbreviated).day())
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            
+            Spacer()
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
     
     private func durationString(from duration: TimeInterval) -> String {

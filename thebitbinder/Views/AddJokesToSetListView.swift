@@ -12,71 +12,102 @@ struct AddJokesToSetListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query private var jokes: [Joke]
+    @Query private var folders: [JokeFolder]
     
     @Bindable var setList: SetList
     var currentJokeIDs: [UUID]
     
     @State private var selectedJokeIDs: Set<UUID> = []
     @State private var searchText = ""
+    @State private var selectedFolder: JokeFolder? = nil
     
     var availableJokes: [Joke] {
-        let filtered = jokes.filter { joke in
+        // Start with jokes not already in the set list
+        var base = jokes.filter { joke in
             !currentJokeIDs.contains(joke.id)
         }
-        
-        if searchText.isEmpty {
-            return filtered
-        } else {
-            return filtered.filter { joke in
-                joke.title.localizedCaseInsensitiveContains(searchText) ||
-                joke.content.localizedCaseInsensitiveContains(searchText)
-            }
+        // If a folder is selected, filter into that folder
+        if let folder = selectedFolder {
+            base = base.filter { $0.folder?.id == folder.id }
+        }
+        // Apply search if present
+        if searchText.isEmpty { return base }
+        let lower = searchText.lowercased()
+        return base.filter { j in
+            j.title.lowercased().contains(lower) || j.content.lowercased().contains(lower)
         }
     }
     
     var body: some View {
         NavigationView {
-            Group {
-                if availableJokes.isEmpty {
-                    VStack(spacing: 20) {
-                        Image(systemName: "text.bubble")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
-                        Text("No jokes available")
-                            .font(.title3)
-                            .foregroundColor(.gray)
-                        Text("All your jokes are already in this set list")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                } else {
-                    List(availableJokes) { joke in
-                        Button(action: {
-                            if selectedJokeIDs.contains(joke.id) {
-                                selectedJokeIDs.remove(joke.id)
-                            } else {
-                                selectedJokeIDs.insert(joke.id)
-                            }
-                        }) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(joke.title)
-                                        .font(.headline)
-                                    Text(joke.content)
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                        .lineLimit(2)
-                                }
-                                Spacer()
-                                if selectedJokeIDs.contains(joke.id) {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(.blue)
-                                }
+            VStack(spacing: 0) {
+                // Folder selection chips
+                if !folders.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            // All jokes chip
+                            FolderChip(
+                                name: "All Jokes",
+                                isSelected: selectedFolder == nil,
+                                action: { selectedFolder = nil }
+                            )
+                            ForEach(folders) { folder in
+                                FolderChip(
+                                    name: folder.name,
+                                    isSelected: selectedFolder?.id == folder.id,
+                                    action: { selectedFolder = folder }
+                                )
                             }
                         }
-                        .foregroundColor(.primary)
+                        .padding(.horizontal)
                     }
-                    .listStyle(.plain)
+                    .padding(.vertical, 8)
+                    .background(Color(UIColor.systemBackground))
+                    Divider()
+                }
+
+                Group {
+                    if availableJokes.isEmpty {
+                        VStack(spacing: 20) {
+                            Image(systemName: "text.bubble")
+                                .font(.system(size: 60))
+                                .foregroundColor(.gray)
+                            Text("No jokes available")
+                                .font(.title3)
+                                .foregroundColor(.gray)
+                            Text("All your jokes are already in this set list")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    } else {
+                        List(availableJokes) { joke in
+                            Button(action: {
+                                if selectedJokeIDs.contains(joke.id) {
+                                    selectedJokeIDs.remove(joke.id)
+                                } else {
+                                    selectedJokeIDs.insert(joke.id)
+                                }
+                            }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(joke.title)
+                                            .font(.headline)
+                                        Text(joke.content)
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(2)
+                                    }
+                                    Spacer()
+                                    if selectedJokeIDs.contains(joke.id) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                            }
+                            .foregroundColor(.primary)
+                        }
+                        .listStyle(.plain)
+                    }
                 }
             }
             .navigationTitle("Add Jokes")

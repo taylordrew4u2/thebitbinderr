@@ -16,6 +16,9 @@ struct RecordingDetailView: View {
     
     @Bindable var recording: Recording
     @StateObject private var audioPlayer = AudioPlayerService()
+    @State private var isTranscribing = false
+    @State private var transcriptionError: String?
+    @State private var showingTranscriptionError = false
     
     var setList: SetList? {
         guard let setListID = recording.setListID else { return nil }
@@ -85,6 +88,65 @@ struct RecordingDetailView: View {
                 }
                 .padding()
                 
+                // Transcription section
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Label("Transcription", systemImage: "text.quote")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        if isTranscribing {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else if recording.transcription == nil {
+                            Button(action: transcribeRecording) {
+                                Label("Transcribe", systemImage: "waveform")
+                                    .font(.subheadline)
+                            }
+                        } else {
+                            Button(action: transcribeRecording) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.subheadline)
+                            }
+                        }
+                    }
+                    
+                    if let transcription = recording.transcription {
+                        Text(transcription)
+                            .font(.body)
+                            .foregroundColor(.primary)
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(UIColor.systemGray6))
+                            .cornerRadius(10)
+                    } else if isTranscribing {
+                        HStack {
+                            Spacer()
+                            VStack(spacing: 8) {
+                                ProgressView()
+                                Text("Transcribing audio...")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .padding()
+                        .background(Color(UIColor.systemGray6))
+                        .cornerRadius(10)
+                    } else {
+                        Text("Tap 'Transcribe' to convert this recording to text")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .italic()
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(UIColor.systemGray6))
+                            .cornerRadius(10)
+                    }
+                }
+                .padding(.horizontal)
+                
                 Divider()
                 
                 // Recording info
@@ -139,6 +201,11 @@ struct RecordingDetailView: View {
         .onDisappear {
             audioPlayer.stop()
         }
+        .alert("Transcription Error", isPresented: $showingTranscriptionError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(transcriptionError ?? "An unknown error occurred")
+        }
     }
     
     private func togglePlayback() {
@@ -146,6 +213,30 @@ struct RecordingDetailView: View {
             audioPlayer.pause()
         } else {
             audioPlayer.play()
+        }
+    }
+    
+    private func transcribeRecording() {
+        isTranscribing = true
+        transcriptionError = nil
+        
+        Task {
+            do {
+                let url = URL(fileURLWithPath: recording.fileURL)
+                let result = try await AudioTranscriptionService.shared.transcribe(audioURL: url)
+                
+                await MainActor.run {
+                    recording.transcription = result.transcription
+                    try? modelContext.save()
+                    isTranscribing = false
+                }
+            } catch {
+                await MainActor.run {
+                    transcriptionError = error.localizedDescription
+                    showingTranscriptionError = true
+                    isTranscribing = false
+                }
+            }
         }
     }
     

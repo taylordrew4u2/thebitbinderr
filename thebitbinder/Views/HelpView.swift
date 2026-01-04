@@ -182,6 +182,7 @@ struct HelpSection: Identifiable {
     let items: [HelpItem]
     
     static let allSections: [HelpSection] = [
+        .autoOrganize,
         .importIssues,
         .performance,
         .scannerIssues,
@@ -202,6 +203,40 @@ struct HelpItem: Identifiable {
 // MARK: - Help Content
 
 extension HelpSection {
+    static let autoOrganize = HelpSection(
+        title: "Auto-Organize",
+        icon: "wand.and.stars",
+        items: [
+            HelpItem(
+                question: "Auto-Organize didn’t move my jokes",
+                symptoms: [
+                    "No jokes moved after running Auto-Organize",
+                    "Only suggestions shown"
+                ],
+                solutions: [
+                    "Only high-confidence matches are auto-filed. Lower-confidence results are shown as suggestions.",
+                    "Open Auto-Organize and tap Accept on a suggestion to file it immediately.",
+                    "You can also tap Choose to select any folder or create a new one."
+                ],
+                tips: [
+                    "The confidence badge shows how strong the match is.",
+                    "You can always move jokes later from the joke detail."
+                ]
+            ),
+            HelpItem(
+                question: "How are categories determined?",
+                symptoms: nil,
+                solutions: [
+                    "The app looks for keywords, structure, and style cues (for example: puns, one-liners, knock-knock).",
+                    "It computes a confidence score and shows reasoning and matched keywords."
+                ],
+                tips: [
+                    "Manually filing jokes helps the app learn better patterns over time."
+                ]
+            )
+        ]
+    )
+
     static let importIssues = HelpSection(
         title: "Jokes Not Being Imported",
         icon: "exclamationmark.triangle",

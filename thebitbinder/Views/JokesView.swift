@@ -27,9 +27,18 @@ struct JokesView: View {
     @State private var exportedPDFURL: URL?
     @State private var selectedPhotos: [PhotosPickerItem] = []
     @State private var isProcessingImages = false
+    @State private var processingCurrent: Int = 0
+    @State private var processingTotal: Int = 0
+    @State private var importSummary: (added: Int, skipped: Int) = (0, 0)
+    @State private var showingImportSummary = false
     @State private var folderPendingDeletion: JokeFolder?
     @State private var showingDeleteFolderAlert = false
     @State private var showingMoveJokesSheet = false
+    @State private var showingAudioImport = false
+    
+    @State private var reviewCandidates: [JokeImportCandidate] = []
+    @State private var showingReviewSheet = false
+    @State private var possibleDuplicates: [String] = [] // store brief descriptions
 
     @ViewBuilder
     private var folderChips: some View {
@@ -66,19 +75,30 @@ struct JokesView: View {
 
     @ViewBuilder
     private var emptyState: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "text.bubble")
-                .font(.system(size: 60))
-                .foregroundColor(.gray)
-            Text("No jokes yet")
-                .font(.title2)
-                .foregroundColor(.gray)
-            Text("Add your first joke using the + button")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+        VStack(spacing: 24) {
+            ZStack {
+                Circle()
+                    .fill(Color.blue.opacity(0.1))
+                    .frame(width: 100, height: 100)
+                Image(systemName: "text.bubble.fill")
+                    .font(.system(size: 44))
+                    .foregroundStyle(.blue)
+            }
+            
+            VStack(spacing: 8) {
+                Text("No jokes yet")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                Text("Add your first joke using the + button")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 40)
     }
+
     
     var filteredJokes: [Joke] {
         // Start with base jokes depending on selected folder
@@ -91,11 +111,16 @@ struct JokesView: View {
         
         // Apply search filter if needed
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let filtered: [Joke]
         if trimmed.isEmpty {
-            return base
+            filtered = base
+        } else {
+            let lower = trimmed.lowercased()
+            filtered = base.filter { matchesSearch($0, lower: lower) }
         }
-        let lower = trimmed.lowercased()
-        return base.filter { matchesSearch($0, lower: lower) }
+        
+        // Sort by dateCreated descending (newest first)
+        return filtered.sorted { $0.dateCreated > $1.dateCreated }
     }
     
     var body: some View {
@@ -123,6 +148,9 @@ struct JokesView: View {
             }
             .navigationTitle("Jokes")
             .searchable(text: $searchText, prompt: "Search jokes")
+            .onAppear {
+                checkPendingVoiceMemoImports()
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Menu {
@@ -157,6 +185,10 @@ struct JokesView: View {
                             Label("Import Photos", systemImage: "photo.on.rectangle")
                         }
                         
+                        Button(action: { showingAudioImport = true }) {
+                            Label("Import Voice Memos", systemImage: "waveform")
+                        }
+                        
                         Button(action: { showingFilePicker = true }) {
                             Label("Import Files", systemImage: "doc")
                         }
@@ -186,6 +218,9 @@ struct JokesView: View {
             .sheet(isPresented: $showingAutoOrganize) {
                 AutoOrganizeView()
             }
+            .sheet(isPresented: $showingAudioImport) {
+                AudioImportView(selectedFolder: selectedFolder)
+            }
             .sheet(isPresented: $showingFilePicker) {
                 DocumentPickerView { urls in
                     processDocuments(urls)
@@ -200,6 +235,11 @@ struct JokesView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text("Your jokes have been exported to a PDF file.")
+            }
+            .alert("Import Complete", isPresented: $showingImportSummary) {
+                Button("OK") {}
+            } message: {
+                Text("Imported \(importSummary.added) jokes. Skipped \(importSummary.skipped).")
             }
             .alert("Delete Folder?", isPresented: $showingDeleteFolderAlert) {
                 Button("Move Jokes…") {
@@ -258,11 +298,43 @@ struct JokesView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showingReviewSheet) {
+                NavigationStack {
+                    List {
+                        if !possibleDuplicates.isEmpty {
+                            Section("Possible Duplicates") {
+                                ForEach(possibleDuplicates, id: \.self) { dup in
+                                    Label(dup, systemImage: "exclamationmark.triangle")
+                                        .foregroundColor(.orange)
+                                }
+                            }
+                        }
+                        Section("Needs Review") {
+                            ForEach(Array(reviewCandidates.enumerated()), id: \.element.id) { index, cand in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    TextField("Title", text: .constant(cand.suggestedTitle))
+                                        .textFieldStyle(.roundedBorder)
+                                    Text(cand.content)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(6)
+                                }
+                            }
+                        }
+                    }
+                    .navigationTitle("Review Imports")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") { showingReviewSheet = false }
+                        }
+                    }
+                }
+            }
             .overlay {
                 if isProcessingImages {
                     Color.black.opacity(0.4)
                         .ignoresSafeArea()
-                    ProgressView("Processing images...")
+                    ProgressView(processingTotal > 0 ? "Processing \(processingCurrent) of \(processingTotal)…" : "Processing…")
                         .padding()
                         .background(Color(UIColor.systemBackground))
                         .cornerRadius(10)
@@ -345,6 +417,12 @@ struct JokesView: View {
     
     private func processSelectedPhotos(_ items: [PhotosPickerItem]) async {
         isProcessingImages = true
+        processingTotal = items.count
+        processingCurrent = 0
+        var added = 0
+        var skipped = 0
+        var candidates: [JokeImportCandidate] = []
+        var duplicates: [String] = []
         for item in items {
             if let data = try? await item.loadTransferable(type: Data.self),
                let image = UIImage(data: data) {
@@ -357,11 +435,28 @@ struct JokesView: View {
                     await MainActor.run {
                         for jokeText in extractedJokes {
                             let (title, isValid) = TextRecognitionService.generateTitleFromJoke(jokeText)
-                            // Only create joke if it's valid and has a proper title
                             if isValid && !title.isEmpty {
-                                let joke = Joke(content: jokeText, title: title, folder: selectedFolder)
-                                modelContext.insert(joke)
-                                print("✅ PHOTOS: Added joke with title: \(title.prefix(40))...")
+                                if isLikelyDuplicate(jokeText, title: title) {
+                                    duplicates.append("\(title) — duplicate suspected")
+                                    skipped += 1
+                                } else {
+                                    let joke = Joke(content: jokeText, title: title, folder: selectedFolder)
+                                    modelContext.insert(joke)
+                                    added += 1
+                                    print("✅ PHOTOS: Added joke with title: \(title.prefix(40))...")
+                                }
+                            } else {
+                                // Borderline candidate for review
+                                let candidate = JokeImportCandidate(
+                                    content: jokeText,
+                                    suggestedTitle: String(jokeText.prefix(50)),
+                                    isComplete: TextRecognitionService.isCompleteJoke(jokeText),
+                                    confidence: Double(TextRecognitionService.countSentences(jokeText)) / 3.0,
+                                    issues: ["Needs review"],
+                                    suggestedFix: nil
+                                )
+                                candidates.append(candidate)
+                                skipped += 1
                             }
                         }
                     }
@@ -369,8 +464,14 @@ struct JokesView: View {
                     print("Error recognizing text: \(error)")
                 }
             }
+            await MainActor.run { processingCurrent += 1 }
         }
         await MainActor.run {
+            importSummary = (added, skipped)
+            showingImportSummary = true
+            reviewCandidates = candidates
+            possibleDuplicates = duplicates
+            if !candidates.isEmpty { showingReviewSheet = true }
             selectedPhotos = []
             isProcessingImages = false
         }
@@ -380,6 +481,9 @@ struct JokesView: View {
         isProcessingImages = true
         Task {
             var totalAdded = 0
+            var skipped = 0
+            var candidates: [JokeImportCandidate] = []
+            var duplicates: [String] = []
             for url in urls {
                 // Files picked with asCopy: true are already inside sandbox; no need for security-scoped access.
                 let fileExists = FileManager.default.fileExists(atPath: url.path)
@@ -394,12 +498,27 @@ struct JokesView: View {
                             let filteredJokes = TextRecognitionService.filterValidJokes(jokes)
                             for jokeText in filteredJokes {
                                 let (title, isValid) = TextRecognitionService.generateTitleFromJoke(jokeText)
-                                // Only create joke if it's valid and has a proper title
                                 if isValid && !title.isEmpty {
-                                    let joke = Joke(content: jokeText, title: title, folder: selectedFolder)
-                                    modelContext.insert(joke)
-                                    totalAdded += 1
-                                    print("✅ PDF: Added joke with title: \(title.prefix(40))...")
+                                    if isLikelyDuplicate(jokeText, title: title) {
+                                        duplicates.append("\(title) — duplicate suspected")
+                                        skipped += 1
+                                    } else {
+                                        let joke = Joke(content: jokeText, title: title, folder: selectedFolder)
+                                        modelContext.insert(joke)
+                                        totalAdded += 1
+                                        print("✅ PDF: Added joke with title: \(title.prefix(40))...")
+                                    }
+                                } else {
+                                    let candidate = JokeImportCandidate(
+                                        content: jokeText,
+                                        suggestedTitle: String(jokeText.prefix(50)),
+                                        isComplete: TextRecognitionService.isCompleteJoke(jokeText),
+                                        confidence: Double(TextRecognitionService.countSentences(jokeText)) / 3.0,
+                                        issues: ["Needs review"],
+                                        suggestedFix: nil
+                                    )
+                                    candidates.append(candidate)
+                                    skipped += 1
                                 }
                             }
                         }
@@ -415,12 +534,27 @@ struct JokesView: View {
                             await MainActor.run {
                                 for jokeText in extractedJokes {
                                     let (title, isValid) = TextRecognitionService.generateTitleFromJoke(jokeText)
-                                    // Only create joke if it's valid and has a proper title
                                     if isValid && !title.isEmpty {
-                                        let joke = Joke(content: jokeText, title: title, folder: selectedFolder)
-                                        modelContext.insert(joke)
-                                        totalAdded += 1
-                                        print("✅ IMAGE: Added joke with title: \(title.prefix(40))...")
+                                        if isLikelyDuplicate(jokeText, title: title) {
+                                            duplicates.append("\(title) — duplicate suspected")
+                                            skipped += 1
+                                        } else {
+                                            let joke = Joke(content: jokeText, title: title, folder: selectedFolder)
+                                            modelContext.insert(joke)
+                                            totalAdded += 1
+                                            print("✅ IMAGE: Added joke with title: \(title.prefix(40))...")
+                                        }
+                                    } else {
+                                        let candidate = JokeImportCandidate(
+                                            content: jokeText,
+                                            suggestedTitle: String(jokeText.prefix(50)),
+                                            isComplete: TextRecognitionService.isCompleteJoke(jokeText),
+                                            confidence: Double(TextRecognitionService.countSentences(jokeText)) / 3.0,
+                                            issues: ["Needs review"],
+                                            suggestedFix: nil
+                                        )
+                                        candidates.append(candidate)
+                                        skipped += 1
                                     }
                                 }
                             }
@@ -434,6 +568,11 @@ struct JokesView: View {
             }
             await MainActor.run {
                 isProcessingImages = false
+                importSummary = (totalAdded, skipped)
+                showingImportSummary = true
+                reviewCandidates = candidates
+                possibleDuplicates = duplicates
+                if !candidates.isEmpty { showingReviewSheet = true }
                 print("🏁 DOCS: Finished. Total jokes added: \(totalAdded)")
             }
         }
@@ -445,8 +584,12 @@ struct JokesView: View {
             print("❌ PDF: Failed to load \(url.lastPathComponent)")
             return
         }
-        let maxDim: CGFloat = 1600
+        let maxDim: CGFloat = 1800
         let pageCount = document.numberOfPages
+        await MainActor.run {
+            processingTotal = pageCount
+            processingCurrent = 0
+        }
         for pageNum in 1...pageCount {
             guard let page = document.page(at: pageNum) else { continue }
             let media = page.getBoxRect(.mediaBox)
@@ -469,6 +612,7 @@ struct JokesView: View {
             } catch {
                 print("❌ PDF: OCR failed on page \(pageNum): \(error)")
             }
+            await MainActor.run { processingCurrent += 1 }
             await Task.yield()
         }
     }
@@ -487,6 +631,49 @@ struct JokesView: View {
            let window = windowScene.windows.first,
            let rootVC = window.rootViewController {
             rootVC.present(activityVC, animated: true)
+        }
+    }
+    
+    private func isLikelyDuplicate(_ content: String, title: String?) -> Bool {
+        let newKey = content.normalizedPrefix()
+        // Check against existing jokes in current filtered set and full list
+        if jokes.contains(where: { $0.content.normalizedPrefix() == newKey }) { return true }
+        if let title = title, !title.isEmpty {
+            let t = title.lowercased().trimmingCharacters(in: .whitespaces)
+            if jokes.contains(where: { $0.title.lowercased().trimmingCharacters(in: .whitespaces) == t }) { return true }
+        }
+        return false
+    }
+    
+    private func checkPendingVoiceMemoImports() {
+        let sharedDefaults = UserDefaults(suiteName: "group.com.taylordrew.thebitbinder")
+        guard let pendingImports = sharedDefaults?.array(forKey: "pendingVoiceMemoImports") as? [[String: String]],
+              !pendingImports.isEmpty else { return }
+        
+        var importedCount = 0
+        for importData in pendingImports {
+            guard let transcription = importData["transcription"],
+                  !transcription.isEmpty else { continue }
+            
+            let filename = importData["filename"] ?? "Voice Memo"
+            let title = AudioTranscriptionService.generateTitle(from: transcription)
+            
+            // Check for duplicates
+            if !isLikelyDuplicate(transcription, title: title) {
+                let joke = Joke(content: transcription, title: title, folder: selectedFolder)
+                modelContext.insert(joke)
+                importedCount += 1
+            }
+        }
+        
+        // Clear pending imports
+        sharedDefaults?.removeObject(forKey: "pendingVoiceMemoImports")
+        sharedDefaults?.synchronize()
+        
+        if importedCount > 0 {
+            try? modelContext.save()
+            importSummary = (importedCount, 0)
+            showingImportSummary = true
         }
     }
 }
@@ -509,13 +696,16 @@ struct FolderChip: View {
         Button(action: action) {
             Text(name)
                 .font(.subheadline)
-                .fontWeight(isSelected ? .semibold : .regular)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(isSelected ? Color.blue : Color(UIColor.systemGray5))
+                .fontWeight(isSelected ? .semibold : .medium)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .background(
+                    Capsule()
+                        .fill(isSelected ? Color.blue : Color(UIColor.systemGray6))
+                )
                 .foregroundColor(isSelected ? .white : .primary)
-                .cornerRadius(20)
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -523,26 +713,39 @@ struct JokeRowView: View {
     let joke: Joke
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(joke.title)
                 .font(.headline)
+                .fontWeight(.semibold)
+                .lineLimit(1)
+            
             Text(joke.content)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .lineLimit(2)
-            HStack {
+            
+            HStack(spacing: 12) {
                 if let folder = joke.folder {
-                    Label(folder.name, systemImage: "folder")
-                        .font(.caption)
-                        .foregroundColor(.blue)
+                    HStack(spacing: 4) {
+                        Image(systemName: "folder.fill")
+                            .font(.caption2)
+                        Text(folder.name)
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.blue)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.blue.opacity(0.1))
+                    .clipShape(Capsule())
                 }
+                
                 Spacer()
-                Text(joke.dateCreated, style: .date)
+                
+                Text(joke.dateCreated, format: .dateTime.month(.abbreviated).day())
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.tertiary)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 }
-

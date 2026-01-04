@@ -16,6 +16,7 @@ final class Recording {
     var duration: TimeInterval
     var fileURL: String
     var setListID: UUID?
+    var transcription: String?
     
     init(name: String, fileURL: String, duration: TimeInterval = 0, setListID: UUID? = nil) {
         self.id = UUID()
@@ -24,5 +25,6 @@ final class Recording {
         self.duration = duration
         self.fileURL = fileURL
         self.setListID = setListID
+        self.transcription = nil
     }
 }

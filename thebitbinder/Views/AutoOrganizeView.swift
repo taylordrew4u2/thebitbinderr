@@ -438,6 +438,12 @@ struct CategorySuggestionDetail: View {
                     }
                 }
             }
+            .onAppear {
+                if joke.categorizationResults.isEmpty {
+                    let matches = AutoOrganizeService.categorize(content: joke.content)
+                    joke.categorizationResults = matches
+                }
+            }
         }
     }
     

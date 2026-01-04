@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.taylordrew.thebitbinder.bg.refresh</string>
+		<string>com.taylordrew.thebitbinder.bg.processing</string>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -22,6 +27,8 @@
 	<string>Allow microphone access to record your performances.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Allow photo library access to import images containing jokes.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Allow speech recognition to transcribe voice notes into jokes.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

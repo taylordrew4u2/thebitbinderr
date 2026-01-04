@@ -10,12 +10,15 @@ import SwiftData
 
 @main
 struct thebitbinderApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
     var sharedModelContainer: ModelContainer =  {
         let schema = Schema([
             Joke.self,
             JokeFolder.self,
             Recording.self,
             SetList.self,
+            NotebookPhotoRecord.self,
         ])
         
         let fileManager = FileManager.default

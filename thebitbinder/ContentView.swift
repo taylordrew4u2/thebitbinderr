@@ -32,31 +32,38 @@ struct ContentView: View {
 }
 
 struct MainTabView: View {
+    @State private var selectedTab = 0
+    
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             HomeView()
+                .tag(0)
                 .tabItem {
-                    Label("Home", systemImage: "house.fill")
+                    Label("Notepad", systemImage: "note.text")
                 }
             
             JokesView()
+                .tag(1)
                 .tabItem {
-                    Label("Jokes", systemImage: "text.bubble")
+                    Label("Jokes", systemImage: "text.bubble.fill")
                 }
             
             SetListsView()
+                .tag(2)
                 .tabItem {
-                    Label("Set Lists", systemImage: "list.bullet.clipboard")
+                    Label("Sets", systemImage: "list.bullet.clipboard.fill")
                 }
             
             RecordingsView()
+                .tag(3)
                 .tabItem {
-                    Label("Recordings", systemImage: "mic.circle")
+                    Label("Record", systemImage: "mic.fill")
                 }
             
-            HelpView()
+            NotebookView()
+                .tag(4)
                 .tabItem {
-                    Label("Help", systemImage: "questionmark.circle")
+                    Label("Photos", systemImage: "photo.fill")
                 }
         }
         .tint(.blue)
