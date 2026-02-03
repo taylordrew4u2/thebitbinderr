@@ -20,9 +20,10 @@ class AudioRecordingService: NSObject, ObservableObject {
     private var recordingTimer: Timer?
     private var recordingStartTime: Date?
     private var pausedDuration: TimeInterval = 0
+    private var lastRecordingURL: URL?
     
     var recordingURL: URL? {
-        return audioRecorder?.url
+        return lastRecordingURL ?? audioRecorder?.url
     }
     
     override init() {
@@ -119,18 +120,23 @@ class AudioRecordingService: NSObject, ObservableObject {
     }
     
     func stopRecording() -> (url: URL?, duration: TimeInterval) {
+        let url = audioRecorder?.url
+        let duration = recordingTime
+        
         audioRecorder?.stop()
         recordingTimer?.invalidate()
         recordingTimer = nil
         
-        let duration = recordingTime
-        let url = audioRecorder?.url
+        // Store the URL before clearing everything
+        lastRecordingURL = url
         
         isRecording = false
         isPaused = false
         recordingTime = 0
         recordingStartTime = nil
         pausedDuration = 0
+        
+        print("🎙️ Stopped recording: \(url?.lastPathComponent ?? "unknown") duration: \(duration)s")
         
         return (url, duration)
     }
@@ -153,14 +159,16 @@ class AudioRecordingService: NSObject, ObservableObject {
         recordingStartTime = nil
         pausedDuration = 0
         audioRecorder = nil
+        lastRecordingURL = nil
     }
 }
 
 extension AudioRecordingService: AVAudioRecorderDelegate {
     func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
         if !flag {
-            print("Recording failed")
+            print("❌ Recording failed")
         }
-        cleanup()
+        // Don't cleanup here - let the caller handle it
+        // The URL needs to remain available after stopping
     }
 }

@@ -373,6 +373,8 @@ class AudioPlayerService: NSObject, ObservableObject, AVAudioPlayerDelegate {
         cleanup()
         loadError = nil
         
+        print("🎵 Loading audio from path: \(path)")
+        
         // Determine the actual file URL
         var url: URL
         
@@ -380,6 +382,7 @@ class AudioPlayerService: NSObject, ObservableObject, AVAudioPlayerDelegate {
         if path.hasPrefix("/") {
             // It's an absolute path - check if file exists there
             url = URL(fileURLWithPath: path)
+            print("📂 Trying absolute path: \(url.path)")
             if !FileManager.default.fileExists(atPath: path) {
                 // Try extracting just the filename and look in documents
                 let filename = URL(fileURLWithPath: path).lastPathComponent
@@ -398,9 +401,18 @@ class AudioPlayerService: NSObject, ObservableObject, AVAudioPlayerDelegate {
         guard FileManager.default.fileExists(atPath: url.path) else {
             let errorMsg = "Audio file not found: \(url.lastPathComponent)"
             print("❌ \(errorMsg)")
+            print("📂 Documents directory: \(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].path)")
+            
+            // List files in documents directory for debugging
+            if let files = try? FileManager.default.contentsOfDirectory(atPath: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].path) {
+                print("📂 Files in documents: \(files.filter { $0.hasSuffix(".m4a") })")
+            }
+            
             loadError = errorMsg
             return
         }
+        
+        print("✅ File exists at: \(url.path)")
         
         // Re-setup audio session before loading
         setupAudioSession()

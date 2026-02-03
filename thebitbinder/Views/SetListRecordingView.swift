@@ -201,6 +201,10 @@ struct SetListRecordingView: View {
             return
         }
         
+        // Verify file exists
+        let fileExists = FileManager.default.fileExists(atPath: fileURL.path)
+        print("📁 Recording file exists: \(fileExists) at \(fileURL.path)")
+        
         // Store just the filename, not the full path (paths change between app launches)
         let fileName = fileURL.lastPathComponent
         
@@ -211,8 +215,17 @@ struct SetListRecordingView: View {
             setListID: setList.id
         )
         
-        print("✅ Saving recording: \(fileName) with duration: \(recordingDuration)")
+        print("✅ Saving recording: \(fileName) with duration: \(recordingDuration)s")
         modelContext.insert(recording)
+        
+        // Save context explicitly
+        do {
+            try modelContext.save()
+            print("✅ Recording saved to database")
+        } catch {
+            print("❌ Failed to save recording to database: \(error)")
+        }
+        
         dismiss()
     }
     
