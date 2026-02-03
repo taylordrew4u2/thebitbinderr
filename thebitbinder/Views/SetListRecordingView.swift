@@ -196,17 +196,22 @@ struct SetListRecordingView: View {
     
     private func saveRecording() {
         guard let fileURL = audioService.recordingURL else {
+            print("❌ No recording URL found")
             dismiss()
             return
         }
         
+        // Store just the filename, not the full path (paths change between app launches)
+        let fileName = fileURL.lastPathComponent
+        
         let recording = Recording(
             name: recordingName.isEmpty ? "Recording \(Date())" : recordingName,
-            fileURL: fileURL.path,
+            fileURL: fileName,
             duration: recordingDuration,
             setListID: setList.id
         )
         
+        print("✅ Saving recording: \(fileName) with duration: \(recordingDuration)")
         modelContext.insert(recording)
         dismiss()
     }

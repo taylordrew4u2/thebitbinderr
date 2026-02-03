@@ -30,61 +30,89 @@ struct RecordingDetailView: View {
             VStack(spacing: 30) {
                 // Player controls
                 VStack(spacing: 20) {
-                    ZStack {
-                        Circle()
-                            .stroke(Color.blue, lineWidth: 8)
-                            .frame(width: 200, height: 200)
-                        
-                        if audioPlayer.isPlaying {
-                            Circle()
-                                .fill(Color.blue.opacity(0.3))
-                                .frame(width: 180, height: 180)
-                        }
-                        
-                        Image(systemName: audioPlayer.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                            .font(.system(size: 80))
-                            .foregroundColor(.blue)
-                    }
-                    
-                    // Progress bar
-                    VStack(spacing: 8) {
-                        Slider(value: $audioPlayer.currentTime, in: 0...max(audioPlayer.duration, 1), onEditingChanged: { editing in
-                            if !editing {
-                                audioPlayer.seek(to: audioPlayer.currentTime)
+                    // Show error if loading failed
+                    if let error = audioPlayer.loadError {
+                        VStack(spacing: 16) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.red.opacity(0.1))
+                                    .frame(width: 100, height: 100)
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.red)
                             }
-                        })
-                        .tint(.blue)
-                        
-                        HStack {
-                            Text(timeString(from: audioPlayer.currentTime))
-                                .font(.caption)
+                            
+                            Text("Unable to Play")
+                                .font(.headline)
+                            
+                            Text(error)
+                                .font(.subheadline)
                                 .foregroundColor(.secondary)
-                            Spacer()
-                            Text(timeString(from: audioPlayer.duration))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                            
+                            Button("Try Again") {
+                                audioPlayer.loadAudio(from: recording.fileURL)
+                            }
+                            .buttonStyle(.borderedProminent)
                         }
-                    }
-                    .padding(.horizontal)
-                    
-                    // Playback controls
-                    HStack(spacing: 40) {
-                        Button(action: { audioPlayer.seek(to: max(0, audioPlayer.currentTime - 15)) }) {
-                            Image(systemName: "gobackward.15")
-                                .font(.system(size: 30))
-                        }
-                        
-                        Button(action: togglePlayback) {
+                        .padding()
+                    } else {
+                        ZStack {
+                            Circle()
+                                .stroke(Color.blue, lineWidth: 8)
+                                .frame(width: 200, height: 200)
+                            
+                            if audioPlayer.isPlaying {
+                                Circle()
+                                    .fill(Color.blue.opacity(0.3))
+                                    .frame(width: 180, height: 180)
+                            }
+                            
                             Image(systemName: audioPlayer.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                                .font(.system(size: 60))
+                                .font(.system(size: 80))
+                                .foregroundColor(.blue)
                         }
                         
-                        Button(action: { audioPlayer.seek(to: min(audioPlayer.duration, audioPlayer.currentTime + 15)) }) {
-                            Image(systemName: "goforward.15")
-                                .font(.system(size: 30))
+                        // Progress bar
+                        VStack(spacing: 8) {
+                            Slider(value: $audioPlayer.currentTime, in: 0...max(audioPlayer.duration, 1), onEditingChanged: { editing in
+                                if !editing {
+                                    audioPlayer.seek(to: audioPlayer.currentTime)
+                                }
+                            })
+                            .tint(.blue)
+                            
+                            HStack {
+                                Text(timeString(from: audioPlayer.currentTime))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text(timeString(from: audioPlayer.duration))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .padding(.horizontal)
+                        
+                        // Playback controls
+                        HStack(spacing: 40) {
+                            Button(action: { audioPlayer.seek(to: max(0, audioPlayer.currentTime - 15)) }) {
+                                Image(systemName: "gobackward.15")
+                                    .font(.system(size: 30))
+                            }
+                            
+                            Button(action: togglePlayback) {
+                                Image(systemName: audioPlayer.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                                    .font(.system(size: 60))
+                            }
+                            
+                            Button(action: { audioPlayer.seek(to: min(audioPlayer.duration, audioPlayer.currentTime + 15)) }) {
+                                Image(systemName: "goforward.15")
+                                    .font(.system(size: 30))
+                            }
+                        }
+                        .foregroundColor(.blue)
                     }
-                    .foregroundColor(.blue)
                 }
                 .padding()
                 
@@ -209,6 +237,12 @@ struct RecordingDetailView: View {
     }
     
     private func togglePlayback() {
+        // Don't try to play if there's a load error
+        guard audioPlayer.loadError == nil else {
+            audioPlayer.loadAudio(from: recording.fileURL)
+            return
+        }
+        
         if audioPlayer.isPlaying {
             audioPlayer.pause()
         } else {
@@ -241,7 +275,20 @@ struct RecordingDetailView: View {
     }
     
     private func shareRecording() {
-        let url = URL(fileURLWithPath: recording.fileURL)
+        // Determine the actual file URL (handle both relative and absolute paths)
+        var url: URL
+        if recording.fileURL.hasPrefix("/") {
+            url = URL(fileURLWithPath: recording.fileURL)
+        } else {
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            url = documentsPath.appendingPathComponent(recording.fileURL)
+        }
+        
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            print("❌ Cannot share - file not found: \(url.path)")
+            return
+        }
+        
         let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -277,6 +324,7 @@ class AudioPlayerService: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var isPlaying = false
     @Published var currentTime: TimeInterval = 0
     @Published var duration: TimeInterval = 0
+    @Published var loadError: String?
     
     private var audioPlayer: AVAudioPlayer?
     private var timer: Timer?
@@ -294,10 +342,12 @@ class AudioPlayerService: NSObject, ObservableObject, AVAudioPlayerDelegate {
     
     private func setupAudioSession() {
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
-            try AVAudioSession.sharedInstance().setActive(true)
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+            try AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
+            print("✅ Audio session configured for playback")
         } catch {
-            print("Failed to set up audio session: \(error)")
+            print("❌ Failed to set up audio session: \(error)")
+            loadError = "Failed to configure audio: \(error.localizedDescription)"
         }
     }
     
@@ -321,14 +371,39 @@ class AudioPlayerService: NSObject, ObservableObject, AVAudioPlayerDelegate {
     func loadAudio(from path: String) {
         // Clean up previous audio first
         cleanup()
+        loadError = nil
         
-        let url = URL(fileURLWithPath: path)
+        // Determine the actual file URL
+        var url: URL
+        
+        // Check if it's a full path or just a filename
+        if path.hasPrefix("/") {
+            // It's an absolute path - check if file exists there
+            url = URL(fileURLWithPath: path)
+            if !FileManager.default.fileExists(atPath: path) {
+                // Try extracting just the filename and look in documents
+                let filename = URL(fileURLWithPath: path).lastPathComponent
+                let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                url = documentsPath.appendingPathComponent(filename)
+                print("📁 File not at original path, trying documents: \(url.path)")
+            }
+        } else {
+            // It's just a filename - look in documents directory
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            url = documentsPath.appendingPathComponent(path)
+            print("📁 Loading from documents: \(url.path)")
+        }
         
         // Check if file exists
-        guard FileManager.default.fileExists(atPath: path) else {
-            print("Audio file does not exist at path: \(path)")
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            let errorMsg = "Audio file not found: \(url.lastPathComponent)"
+            print("❌ \(errorMsg)")
+            loadError = errorMsg
             return
         }
+        
+        // Re-setup audio session before loading
+        setupAudioSession()
         
         do {
             audioPlayer = try AVAudioPlayer(contentsOf: url)
@@ -336,8 +411,11 @@ class AudioPlayerService: NSObject, ObservableObject, AVAudioPlayerDelegate {
             audioPlayer?.prepareToPlay()
             duration = audioPlayer?.duration ?? 0
             currentTime = 0
+            print("✅ Audio loaded successfully: duration = \(duration)s")
         } catch {
-            print("Error loading audio: \(error.localizedDescription)")
+            let errorMsg = "Error loading audio: \(error.localizedDescription)"
+            print("❌ \(errorMsg)")
+            loadError = errorMsg
         }
     }
     

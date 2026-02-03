@@ -67,8 +67,17 @@ struct RecordingsView: View {
     private func deleteRecordings(at offsets: IndexSet) {
         for index in offsets {
             let recording = filteredRecordings[index]
-            let url = URL(fileURLWithPath: recording.fileURL)
-            try? FileManager.default.removeItem(at: url)
+            
+            // Determine the actual file URL (handle both relative and absolute paths)
+            var fileURL: URL
+            if recording.fileURL.hasPrefix("/") {
+                fileURL = URL(fileURLWithPath: recording.fileURL)
+            } else {
+                let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                fileURL = documentsPath.appendingPathComponent(recording.fileURL)
+            }
+            
+            try? FileManager.default.removeItem(at: fileURL)
             modelContext.delete(recording)
         }
     }

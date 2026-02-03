@@ -70,19 +70,24 @@ struct AudioImportView: View {
                     }
                     .padding(.horizontal)
                     
-                    // Quick tip - how to share from Voice Memos
-                    VStack(alignment: .leading, spacing: 10) {
-                        Label("Quick Import from Voice Memos", systemImage: "lightbulb.fill")
+                    // Instructions for importing
+                    VStack(alignment: .leading, spacing: 16) {
+                        Label("How to Import Voice Memos", systemImage: "info.circle.fill")
                             .font(.headline)
-                            .foregroundColor(.orange)
+                            .foregroundColor(.blue)
                         
-                        Text("1. Open Voice Memos app\n2. Long press a recording\n3. Tap Share → thebitbinder")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                        VStack(alignment: .leading, spacing: 12) {
+                            ImportStepRow(number: 1, text: "Open the Voice Memos app")
+                            ImportStepRow(number: 2, text: "Tap on the recording you want to import")
+                            ImportStepRow(number: 3, text: "Tap the ••• (more) button")
+                            ImportStepRow(number: 4, text: "Tap \"Save to Files\"")
+                            ImportStepRow(number: 5, text: "Choose a location (e.g., On My iPhone)")
+                            ImportStepRow(number: 6, text: "Come back here and tap \"Browse Files\" below")
+                        }
                     }
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.orange.opacity(0.1))
+                    .background(Color.blue.opacity(0.08))
                     .cornerRadius(12)
                     .padding(.horizontal)
                     
@@ -471,6 +476,28 @@ struct AudioImportResultsView: View {
                         .fontWeight(.semibold)
                 }
             }
+        }
+    }
+}
+
+// MARK: - Import Step Row
+struct ImportStepRow: View {
+    let number: Int
+    let text: String
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("\(number)")
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundColor(.white)
+                .frame(width: 22, height: 22)
+                .background(Color.blue)
+                .clipShape(Circle())
+            
+            Text(text)
+                .font(.subheadline)
+                .foregroundColor(.primary)
         }
     }
 }

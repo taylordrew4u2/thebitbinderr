@@ -51,7 +51,12 @@ struct MainTabView: View {
             
             RecordingsView()
                 .tabItem {
-                    Label("Record", systemImage: "mic.fill")
+                    Label("Recordings", systemImage: "mic.fill")
+                }
+            
+            GymView()
+                .tabItem {
+                    Label("Gym", systemImage: "dumbbell.fill")
                 }
             
             NotebookView()

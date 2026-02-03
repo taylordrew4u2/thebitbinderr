@@ -1,8 +1,45 @@
-# Voice Memo Import Share Extension Setup
+# Voice Memo Import Guide
 
-To complete the Voice Memo import feature, you need to add a Share Extension to your Xcode project. This allows users to share voice memos directly from the Voice Memos app to thebitbinder.
+## How to Import Voice Memos into thebitbinder
 
-## Steps to Add Share Extension in Xcode:
+There are two ways to import voice memos into thebitbinder as jokes:
+
+---
+
+## Method 1: Save to Files (Recommended)
+
+This is the simplest and most reliable method:
+
+1. **Open the Voice Memos app** on your iPhone
+2. **Tap on the recording** you want to import
+3. **Tap the ••• (more options) button**
+4. **Tap "Save to Files"**
+5. **Choose a location** (e.g., "On My iPhone" or iCloud Drive)
+6. **Open thebitbinder**
+7. **Go to Jokes tab → tap + → "Import Voice Memos"**
+8. **Tap "Browse Files"**
+9. **Navigate to where you saved the file and select it**
+10. **The audio will be transcribed and saved as a joke!**
+
+---
+
+## Method 2: Share Extension (If Set Up)
+
+If the Share Extension is properly configured in Xcode:
+
+1. Open Voice Memos app
+2. Tap on a recording
+3. Tap the ••• button → Share
+4. Look for **"Save to Jokes"** in the share sheet
+5. The audio will be transcribed automatically
+
+**Note:** The share extension requires additional Xcode setup (see below).
+
+---
+
+## Share Extension Setup (For Developers)
+
+To enable the "Save to Jokes" share option:
 
 ### 1. Add New Target
 1. Open the project in Xcode
@@ -11,48 +48,35 @@ To complete the Voice Memo import feature, you need to add a Share Extension to 
 4. Name it: `VoiceMemoImport`
 5. Bundle Identifier: `com.taylordrew.thebitbinder.VoiceMemoImport`
 6. Click **Finish**
-7. When prompted to activate the scheme, click **Cancel** (you can keep using the main app scheme)
 
-### 2. Replace Generated Files
-Replace the auto-generated files with the ones in the `VoiceMemoImport` folder:
-- `ShareViewController.swift` - Already created
-- `Info.plist` - Already created  
-- `VoiceMemoImport.entitlements` - Already created
+### 2. Configure App Group
+1. Select the **thebitbinder** target → Signing & Capabilities → + Capability → App Groups
+2. Add: `group.com.taylordrew.thebitbinder`
+3. Do the same for the **VoiceMemoImport** target
 
-### 3. Configure App Group
-1. Select the **thebitbinder** target
-2. Go to **Signing & Capabilities**
-3. Click **+ Capability** → Add **App Groups**
-4. Add: `group.com.taylordrew.thebitbinder`
+### 3. Build and Run
+Build and run on your device. The "Save to Jokes" option should appear in the share sheet when sharing audio files.
 
-5. Select the **VoiceMemoImport** target
-6. Go to **Signing & Capabilities**
-7. Click **+ Capability** → Add **App Groups**
-8. Add the same: `group.com.taylordrew.thebitbinder`
+---
 
-### 4. Update Share Extension Info.plist
-The Info.plist is configured to accept audio files. The extension will appear when sharing from Voice Memos.
+## Supported Audio Formats
 
-### 5. Build and Run
-1. Build and run on your device
-2. Open Voice Memos app
-3. Long press on a recording
-4. Tap **Share**
-5. Select **thebitbinder**
-6. The audio will be transcribed and saved as a joke
+- .m4a (Voice Memos default)
+- .mp3
+- .wav
+- .aac
+- .caf
+- .aiff
 
-## How It Works
+---
 
-1. User shares voice memo from Voice Memos app
-2. Share extension receives the audio file
-3. Extension transcribes audio using Speech Recognition
-4. Transcription is saved to shared App Group storage
-5. When user opens thebitbinder Jokes tab, pending imports are processed
-6. New jokes appear in the list
+## Troubleshooting
 
-## Alternative: Browse Files Method
+**Q: I don't see "Save to Jokes" in the share sheet**
+A: Use Method 1 (Save to Files) instead. The share extension requires additional Xcode setup.
 
-If you don't want to set up the share extension, users can still:
-1. In Voice Memos, tap a recording → tap ••• → "Save to Files"
-2. In thebitbinder, tap + → "Import Voice Memos" → "Browse Files"
-3. Navigate to where they saved the file
+**Q: Transcription failed**
+A: Make sure you have granted speech recognition permission in Settings → thebitbinder. Also ensure you have an internet connection.
+
+**Q: The transcription quality is poor**
+A: Speech recognition works best with clear audio. Background noise may reduce accuracy.

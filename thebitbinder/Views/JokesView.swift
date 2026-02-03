@@ -35,6 +35,7 @@ struct JokesView: View {
     @State private var showingDeleteFolderAlert = false
     @State private var showingMoveJokesSheet = false
     @State private var showingAudioImport = false
+    @State private var showingTalkToText = false
     
     @State private var reviewCandidates: [JokeImportCandidate] = []
     @State private var showingReviewSheet = false
@@ -176,6 +177,10 @@ struct JokesView: View {
                             Label("Add Manually", systemImage: "square.and.pencil")
                         }
                         
+                        Button(action: { showingTalkToText = true }) {
+                            Label("Talk-to-Text", systemImage: "mic.badge.plus")
+                        }
+                        
                         Button(action: { showingScanner = true }) {
                             Label("Scan from Camera", systemImage: "camera")
                         }
@@ -220,6 +225,9 @@ struct JokesView: View {
             }
             .sheet(isPresented: $showingAudioImport) {
                 AudioImportView(selectedFolder: selectedFolder)
+            }
+            .sheet(isPresented: $showingTalkToText) {
+                TalkToTextView(selectedFolder: selectedFolder)
             }
             .sheet(isPresented: $showingFilePicker) {
                 DocumentPickerView { urls in
