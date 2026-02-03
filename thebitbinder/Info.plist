@@ -27,6 +27,8 @@
 	<string>Allow microphone access to record your performances.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Allow photo library access to import images containing jokes.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Allow speech recognition to transcribe recordings and enable Talk-to-Text joke creation.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
