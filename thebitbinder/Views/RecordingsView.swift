@@ -14,6 +14,7 @@ struct RecordingsView: View {
     @Query(sort: \Recording.dateCreated, order: .reverse) private var recordings: [Recording]
     
     @State private var searchText = ""
+    @State private var showingQuickRecord = false
     
     var filteredRecordings: [Recording] {
         if searchText.isEmpty {
@@ -41,7 +42,7 @@ struct RecordingsView: View {
                             Text("No recordings yet")
                                 .font(.title3)
                                 .fontWeight(.semibold)
-                            Text("Record a set list to see it here")
+                            Text("Tap the mic button to start recording")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -61,6 +62,20 @@ struct RecordingsView: View {
             }
             .navigationTitle("Recordings")
             .searchable(text: $searchText, prompt: "Search recordings")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingQuickRecord = true
+                    } label: {
+                        Image(systemName: "mic.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .sheet(isPresented: $showingQuickRecord) {
+                StandaloneRecordingView()
+            }
         }
     }
     
