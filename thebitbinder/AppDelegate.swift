@@ -13,9 +13,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     private func configureAudioSession() {
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default, options: [.allowBluetoothA2DP, .allowAirPlay])
+            // Use playAndRecord to support both recording and playback
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP, .allowAirPlay])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
-            print("✅ App audio session configured for background audio")
+            print("✅ App audio session configured for recording and playback")
         } catch {
             print("❌ Failed to configure app audio session: \(error)")
         }
