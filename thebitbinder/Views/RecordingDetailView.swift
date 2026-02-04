@@ -341,12 +341,15 @@ class AudioPlayerService: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
     
     private func setupAudioSession() {
+        // Don't reconfigure - use the app-wide session from AppDelegate
+        // AppDelegate already configured .playAndRecord which works for both
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
-            try AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
-            print("✅ Audio session configured for playback")
+            let session = AVAudioSession.sharedInstance()
+            // Just ensure it's active, don't change category
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+            print("✅ Audio session activated for playback")
         } catch {
-            print("❌ Failed to set up audio session: \(error)")
+            print("❌ Failed to activate audio session: \(error)")
             loadError = "Failed to configure audio: \(error.localizedDescription)"
         }
     }
@@ -414,8 +417,7 @@ class AudioPlayerService: NSObject, ObservableObject, AVAudioPlayerDelegate {
         
         print("✅ File exists at: \(url.path)")
         
-        // Re-setup audio session before loading
-        setupAudioSession()
+        // Audio session already configured app-wide in AppDelegate
         
         do {
             audioPlayer = try AVAudioPlayer(contentsOf: url)

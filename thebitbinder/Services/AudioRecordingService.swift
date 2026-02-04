@@ -54,13 +54,15 @@ class AudioRecordingService: NSObject, ObservableObject {
     }
     
     private func setupAudioSession() {
-        let audioSession = AVAudioSession.sharedInstance()
+        // Don't reconfigure - use the app-wide session from AppDelegate
+        // AppDelegate already configured .playAndRecord which is what we need
         do {
-            try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP, .allowAirPlay, .mixWithOthers])
+            let audioSession = AVAudioSession.sharedInstance()
+            // Just ensure it's active
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
-            print("✅ Audio session configured for recording")
+            print("✅ Audio session activated for recording")
         } catch {
-            print("❌ Failed to set up audio session: \(error)")
+            print("❌ Failed to activate audio session: \(error)")
         }
     }
     

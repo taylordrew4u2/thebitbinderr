@@ -297,13 +297,13 @@ class SpeechRecognizer: ObservableObject {
             return
         }
         
-        // Set up audio session
+        // Use app-wide audio session (already configured in AppDelegate)
         let audioSession = AVAudioSession.sharedInstance()
         do {
-            try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+            // Just ensure it's active, don't reconfigure
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
-            self.error = "Failed to set up audio session"
+            self.error = "Failed to activate audio session"
             return
         }
         
