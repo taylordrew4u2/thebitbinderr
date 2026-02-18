@@ -7,63 +7,57 @@
 
 import Foundation
 
-/// Service for interacting with ElevenLabs Conversational AI Agent
+/// Service to communicate with ElevenLabs Conversational AI agent
 class ElevenLabsAgentService: ObservableObject {
+    
     static let shared = ElevenLabsAgentService()
     
+    // MARK: - Configuration
     private let agentId = "agent_7401ka31ry6qftr9ab89em3339w9"
     private let apiKey = "sk_40b434d2a8deebbb7c6683dba782412a0dcc9ff571d042ca"
-    private let baseURL = "https://api.elevenlabs.io/v1/convai"
     
-    @Published var isConnected = false
-    @Published var conversationId: String?
+    // MARK: - State
+    @Published var isLoading = false
+    @Published var lastError: String?
+    
+    /// Current conversation ID for continuity
+    private var conversationId: String?
     
     private init() {}
     
-    /// Start a new conversation with the agent
-    func startConversation() async throws -> String {
-        let url = URL(string: "\(baseURL)/conversation/\(agentId)/start")!
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = "{}".data(using: .utf8)
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw AgentError.invalidResponse
+    // MARK: - Public API
+    
+    /// Send a message to the ElevenLabs agent
+    func sendMessage(_ message: String) async throws -> String {
+        await MainActor.run {
+            isLoading = true
+            lastError = nil
         }
         
-        guard httpResponse.statusCode == 200 else {
-            throw AgentError.apiError(statusCode: httpResponse.statusCode)
-        }
-        
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        
-        if let convId = json?["conversation_id"] as? String {
-            await MainActor.run {
-                self.conversationId = convId
-                self.isConnected = true
+        defer {
+            Task { @MainActor in
+                isLoading = false
             }
-            return convId
         }
         
-        throw AgentError.noConversationId
+        // If no conversation, start one first
+        if conversationId == nil {
+            try await startConversation()
+        }
+        
+        // Send the message
+        return try await sendToAgent(message)
     }
     
-    /// Send a message to the agent and get a response
-    func sendMessage(_ message: String) async throws -> String {
-        // Start conversation if not already started
-        let convId: String
-        if let existingId = conversationId {
-            convId = existingId
-        } else {
-            convId = try await startConversation()
-        }
-        
-        let url = URL(string: "\(baseURL)/conversation/\(convId)/message")!
+    /// Start a new conversation
+    func startNewConversation() {
+        conversationId = nil
+    }
+    
+    // MARK: - Private Methods
+    
+    private func startConversation() async throws {
+        let url = URL(string: "https://api.elevenlabs.io/v1/convai/conversations")!
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -71,78 +65,102 @@ class ElevenLabsAgentService: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         let body: [String: Any] = [
-            "message": message,
-            "access_code": "9856"
+            "agent_id": agentId
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw AgentError.invalidResponse
+            throw AgentError.noResponse
         }
         
-        guard httpResponse.statusCode == 200 else {
-            // If conversation expired, start a new one and retry
-            if httpResponse.statusCode == 404 || httpResponse.statusCode == 400 {
-                await MainActor.run {
-                    self.conversationId = nil
-                    self.isConnected = false
-                }
-                // Retry with new conversation
-                _ = try await startConversation()
-                return try await sendMessage(message)
+        guard httpResponse.statusCode == 200 || httpResponse.statusCode == 201 else {
+            let errorMsg = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw AgentError.serverError(httpResponse.statusCode, errorMsg)
+        }
+        
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let convId = json["conversation_id"] as? String {
+            self.conversationId = convId
+        }
+    }
+    
+    private func sendToAgent(_ message: String) async throws -> String {
+        guard let convId = conversationId else {
+            throw AgentError.noConversation
+        }
+        
+        let url = URL(string: "https://api.elevenlabs.io/v1/convai/conversations/\(convId)/messages")!
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 60
+        
+        let body: [String: Any] = [
+            "text": message
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AgentError.noResponse
+        }
+        
+        // If conversation expired, start fresh and retry
+        if httpResponse.statusCode == 404 {
+            conversationId = nil
+            try await startConversation()
+            return try await sendToAgent(message)
+        }
+        
+        guard httpResponse.statusCode == 200 || httpResponse.statusCode == 201 else {
+            let errorMsg = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw AgentError.serverError(httpResponse.statusCode, errorMsg)
+        }
+        
+        // Parse response
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            // Try different possible response fields
+            if let reply = json["text"] as? String {
+                return reply
+            } else if let reply = json["response"] as? String {
+                return reply
+            } else if let reply = json["message"] as? String {
+                return reply
+            } else if let messages = json["messages"] as? [[String: Any]],
+                      let lastMessage = messages.last,
+                      let text = lastMessage["text"] as? String {
+                return text
             }
-            throw AgentError.apiError(statusCode: httpResponse.statusCode)
         }
         
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        
-        if let reply = json?["response"] as? String {
-            return reply
-        } else if let reply = json?["message"] as? String {
-            return reply
-        } else if let reply = json?["text"] as? String {
-            return reply
-        }
-        
-        // Return raw JSON if we can't parse specific field
-        if let jsonString = String(data: data, encoding: .utf8) {
-            return jsonString
+        // Return raw response if can't parse
+        if let rawString = String(data: data, encoding: .utf8), !rawString.isEmpty {
+            return rawString
         }
         
         throw AgentError.noResponse
-    }
-    
-    /// End the current conversation
-    func endConversation() {
-        conversationId = nil
-        isConnected = false
-    }
-    
-    /// Start a fresh conversation
-    func startNewConversation() {
-        endConversation()
     }
 }
 
 // MARK: - Errors
 enum AgentError: LocalizedError {
-    case invalidResponse
-    case apiError(statusCode: Int)
-    case noConversationId
     case noResponse
+    case noConversation
+    case serverError(Int, String)
     
     var errorDescription: String? {
         switch self {
-        case .invalidResponse:
-            return "Invalid response from server"
-        case .apiError(let statusCode):
-            return "API error (status \(statusCode))"
-        case .noConversationId:
-            return "Failed to get conversation ID"
         case .noResponse:
-            return "No response from agent"
+            return "No response from AI assistant"
+        case .noConversation:
+            return "No active conversation"
+        case .serverError(let code, let message):
+            return "Error (\(code)): \(message)"
         }
     }
 }
