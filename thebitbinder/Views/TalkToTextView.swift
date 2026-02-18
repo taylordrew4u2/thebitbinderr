@@ -1,4 +1,3 @@
-//
 //  TalkToTextView.swift
 //  thebitbinder
 //
@@ -8,6 +7,7 @@
 import SwiftUI
 import Speech
 import AVFoundation
+import AVFAudio
 
 struct TalkToTextView: View {
     @Environment(\.modelContext) private var modelContext
@@ -26,6 +26,12 @@ struct TalkToTextView: View {
     enum PermissionStatus {
         case notDetermined
         case authorized
+        case denied
+    }
+
+    private enum MicPermissionStatus {
+        case undetermined
+        case granted
         case denied
     }
     
@@ -190,7 +196,7 @@ struct TalkToTextView: View {
     private func checkPermissions() {
         Task {
             let speechStatus = SFSpeechRecognizer.authorizationStatus()
-            let audioStatus = AVAudioSession.sharedInstance().recordPermission
+            let audioStatus = currentMicPermission()
             
             if speechStatus == .authorized && audioStatus == .granted {
                 await MainActor.run {
@@ -207,6 +213,32 @@ struct TalkToTextView: View {
             }
         }
     }
+
+    private func currentMicPermission() -> MicPermissionStatus {
+        if #available(iOS 17.0, *) {
+            switch AVAudioApplication.shared.recordPermission {
+            case .granted:
+                return .granted
+            case .denied:
+                return .denied
+            case .undetermined:
+                return .undetermined
+            @unknown default:
+                return .undetermined
+            }
+        } else {
+            switch AVAudioSession.sharedInstance().recordPermission {
+            case .granted:
+                return .granted
+            case .denied:
+                return .denied
+            case .undetermined:
+                return .undetermined
+            @unknown default:
+                return .undetermined
+            }
+        }
+    }
     
     private func requestPermissions() async {
         // Request speech recognition permission
@@ -217,11 +249,7 @@ struct TalkToTextView: View {
         }
         
         // Request microphone permission
-        let micGranted = await withCheckedContinuation { continuation in
-            AVAudioSession.sharedInstance().requestRecordPermission { granted in
-                continuation.resume(returning: granted)
-            }
-        }
+        let micGranted = await requestMicPermission()
         
         await MainActor.run {
             if speechGranted && micGranted {
@@ -229,6 +257,20 @@ struct TalkToTextView: View {
             } else {
                 permissionStatus = .denied
                 showingPermissionAlert = true
+            }
+        }
+    }
+
+    private func requestMicPermission() async -> Bool {
+        await withCheckedContinuation { continuation in
+            if #available(iOS 17.0, *) {
+                AVAudioApplication.requestRecordPermission { granted in
+                    continuation.resume(returning: granted)
+                }
+            } else {
+                AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                    continuation.resume(returning: granted)
+                }
             }
         }
     }
