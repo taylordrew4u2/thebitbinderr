@@ -8,7 +8,8 @@
 import Foundation
 import AVFoundation
 
-/// Service to communicate with ElevenLabs Conversational AI agent
+/// Service to communicate with ElevenLabs Conversational AI agent via proxy
+/// Proxy URL: https://elevenlabs-proxy.taylordrew4u.workers.dev/
 /// Agent ID: agent_7401ka31ry6qftr9ab89em3339w9
 /// Access Code: 9856
 class ElevenLabsAgentService: NSObject, ObservableObject {
@@ -16,8 +17,7 @@ class ElevenLabsAgentService: NSObject, ObservableObject {
     static let shared = ElevenLabsAgentService()
     
     // MARK: - Configuration
-    private let agentId = "agent_7401ka31ry6qftr9ab89em3339w9"
-    private let apiKey = "sk_40b434d2a8deebbb7c6683dba782412a0dcc9ff571d042ca"
+    private let proxyURL = "https://elevenlabs-proxy.taylordrew4u.workers.dev"
     private let accessCode = "9856"
     
     // MARK: - State
@@ -44,13 +44,13 @@ class ElevenLabsAgentService: NSObject, ObservableObject {
             }
         }
         
-        // Try to get response from ElevenLabs
+        // Try to get response from ElevenLabs via proxy
         do {
-            let response = try await sendToElevenLabs(message)
+            let response = try await sendToProxy(message)
             return response
         } catch {
             // If API fails, just return "brb"
-            print("ElevenLabs API error: \(error.localizedDescription)")
+            print("ElevenLabs Proxy error: \(error.localizedDescription)")
             return "brb"
         }
     }
@@ -63,27 +63,18 @@ class ElevenLabsAgentService: NSObject, ObservableObject {
     
     // MARK: - Private Methods
     
-    private func sendToElevenLabs(_ message: String) async throws -> String {
-        // First get a signed URL to verify connection
-        let signedURL = try await getSignedURL()
-        print("Got signed URL: \(signedURL)")
-        
-        await MainActor.run {
-            isConnected = true
+    private func sendToProxy(_ message: String) async throws -> String {
+        guard let url = URL(string: proxyURL) else {
+            throw ElevenLabsError.invalidResponse
         }
-        
-        // Try the conversation endpoint
-        let url = URL(string: "https://api.elevenlabs.io/v1/convai/conversation")!
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
+        request.timeoutInterval = 60
         
         var body: [String: Any] = [
-            "agent_id": agentId,
-            "text": message,
+            "message": message,
             "access_code": accessCode
         ]
         
@@ -100,11 +91,15 @@ class ElevenLabsAgentService: NSObject, ObservableObject {
         }
         
         let responseString = String(data: data, encoding: .utf8) ?? "No data"
-        print("ElevenLabs Response (\(httpResponse.statusCode)): \(responseString)")
+        print("ElevenLabs Proxy Response (\(httpResponse.statusCode)): \(responseString)")
         
-        if httpResponse.statusCode == 200 || httpResponse.statusCode == 201 {
+        if httpResponse.statusCode == 200 {
+            await MainActor.run {
+                isConnected = true
+            }
+            
             if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                // Save conversation ID
+                // Save conversation ID if returned
                 if let convId = json["conversation_id"] as? String {
                     self.conversationId = convId
                 }
@@ -120,43 +115,22 @@ class ElevenLabsAgentService: NSObject, ObservableObject {
                     return response
                 } else if let response = json["output"] as? String {
                     return response
+                } else if let response = json["signed_url"] as? String {
+                    // If we got a signed URL, the proxy started a conversation
+                    // Return a welcome message
+                    return "Hey! I'm The BitBuilder, your comedy assistant. How can I help you today? 🎤"
                 }
             }
             
             // Return raw response if can't parse specific field
-            if !responseString.isEmpty && responseString != "No data" {
+            if !responseString.isEmpty && responseString != "No data" && !responseString.contains("signed_url") {
                 return responseString
             }
+            
+            return "Connected! How can I help with your comedy? 🎭"
         }
         
         throw ElevenLabsError.apiError(statusCode: httpResponse.statusCode, message: responseString)
-    }
-    
-    private func getSignedURL() async throws -> String {
-        let url = URL(string: "https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=\(agentId)")!
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
-        request.timeoutInterval = 15
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw ElevenLabsError.invalidResponse
-        }
-        
-        guard httpResponse.statusCode == 200 else {
-            let errorMsg = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw ElevenLabsError.apiError(statusCode: httpResponse.statusCode, message: errorMsg)
-        }
-        
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let signedUrl = json["signed_url"] as? String else {
-            throw ElevenLabsError.parseError
-        }
-        
-        return signedUrl
     }
 }
 
