@@ -31,11 +31,23 @@ struct RecordingsView: View {
                     VStack(spacing: 24) {
                         ZStack {
                             Circle()
-                                .fill(Color.blue.opacity(0.1))
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.red.opacity(0.12), Color.red.opacity(0.08)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                                 .frame(width: 100, height: 100)
                             Image(systemName: "mic.circle.fill")
                                 .font(.system(size: 50))
-                                .foregroundStyle(.blue)
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.red, .red.opacity(0.8)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                         }
                         
                         VStack(spacing: 8) {
@@ -105,11 +117,17 @@ struct RecordingRowView: View {
         HStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .fill(Color.blue.opacity(0.1))
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.red.opacity(0.15), Color.red.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .frame(width: 44, height: 44)
                 Image(systemName: "play.fill")
                     .font(.system(size: 14))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(.red)
             }
             
             VStack(alignment: .leading, spacing: 6) {

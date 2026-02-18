@@ -35,94 +35,127 @@ struct AIChatView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Chat messages
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            // Welcome message
-                            if messages.isEmpty {
-                                WelcomeMessageView()
-                                    .padding(.top, 40)
+            ZStack {
+                // Subtle paper background
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.98, green: 0.96, blue: 0.93),
+                        Color(UIColor.systemBackground)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    // Chat messages
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            LazyVStack(spacing: 16) {
+                                // Welcome message
+                                if messages.isEmpty {
+                                    WelcomeMessageView()
+                                        .padding(.top, 40)
+                                }
+                                
+                                ForEach(messages) { message in
+                                    ChatBubbleView(message: message)
+                                        .id(message.id)
+                                }
+                                
+                                // Typing indicator
+                                if isWaitingForResponse {
+                                    TypingIndicatorView()
+                                        .id("typing")
+                                }
                             }
-                            
-                            ForEach(messages) { message in
-                                ChatBubbleView(message: message)
-                                    .id(message.id)
-                            }
-                            
-                            // Typing indicator
-                            if isWaitingForResponse {
-                                TypingIndicatorView()
-                                    .id("typing")
-                            }
+                            .padding(.horizontal)
+                            .padding(.vertical, 12)
                         }
-                        .padding(.horizontal)
-                        .padding(.vertical, 12)
-                    }
-                    .onChange(of: messages.count) {
-                        withAnimation {
-                            if let lastMessage = messages.last {
-                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
-                            }
-                        }
-                    }
-                    .onChange(of: isWaitingForResponse) {
-                        if isWaitingForResponse {
+                        .onChange(of: messages.count) {
                             withAnimation {
-                                proxy.scrollTo("typing", anchor: .bottom)
+                                if let lastMessage = messages.last {
+                                    proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                                }
+                            }
+                        }
+                        .onChange(of: isWaitingForResponse) {
+                            if isWaitingForResponse {
+                                withAnimation {
+                                    proxy.scrollTo("typing", anchor: .bottom)
+                                }
                             }
                         }
                     }
-                }
-                
-                Divider()
-                
-                // Input area
-                HStack(spacing: 12) {
-                    TextField("Ask me anything...", text: $inputText, axis: .vertical)
-                        .textFieldStyle(.plain)
-                        .padding(12)
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(20)
-                        .lineLimit(1...5)
-                        .focused($isInputFocused)
-                        .submitLabel(.send)
-                        .onSubmit {
-                            sendMessage()
-                        }
                     
-                    Button {
-                        sendMessage()
-                    } label: {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 32))
-                            .foregroundStyle(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isWaitingForResponse ? .gray : .blue)
+                    // Input area
+                    VStack(spacing: 0) {
+                        Divider()
+                        
+                        HStack(spacing: 12) {
+                            TextField("Ask me anything...", text: $inputText, axis: .vertical)
+                                .textFieldStyle(.plain)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 22)
+                                        .fill(Color(UIColor.secondarySystemBackground))
+                                )
+                                .lineLimit(1...5)
+                                .focused($isInputFocused)
+                                .submitLabel(.send)
+                                .onSubmit {
+                                    sendMessage()
+                                }
+                            
+                            Button {
+                                sendMessage()
+                            } label: {
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isWaitingForResponse
+                                            ? Color.gray.opacity(0.3)
+                                            : LinearGradient(
+                                                colors: [.blue, .indigo],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .frame(width: 40, height: 40)
+                                    
+                                    Image(systemName: "arrow.up")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(.white)
+                                }
+                            }
+                            .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isWaitingForResponse)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(.ultraThinMaterial)
                     }
-                    .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isWaitingForResponse)
                 }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .background(Color(UIColor.systemBackground))
             }
             .navigationTitle("AI Assistant")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Close") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 22))
+                            .foregroundStyle(.secondary)
                     }
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button {
-                            startNewChat()
-                        } label: {
-                            Label("New Chat", systemImage: "plus.message")
-                        }
+                    Button {
+                        startNewChat()
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Image(systemName: "plus.message")
+                            .foregroundStyle(.blue)
                     }
                 }
             }
@@ -176,20 +209,39 @@ struct AIChatView: View {
 
 struct WelcomeMessageView: View {
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 50))
-                .foregroundStyle(.blue.gradient)
+        VStack(spacing: 20) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.blue.opacity(0.12), Color.indigo.opacity(0.08)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 100, height: 100)
+                
+                Image(systemName: "sparkles")
+                    .font(.system(size: 44))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.blue, .indigo],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
             
-            Text("AI Assistant")
-                .font(.title2)
-                .fontWeight(.bold)
-            
-            Text("Ask me anything about comedy, jokes, or get help with your sets!")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
+            VStack(spacing: 8) {
+                Text("AI Assistant")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                
+                Text("Ask me anything about comedy, jokes, or get help with your sets!")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
         }
     }
 }
@@ -199,21 +251,33 @@ struct ChatBubbleView: View {
     
     var body: some View {
         HStack {
-            if message.isUser { Spacer(minLength: 60) }
+            if message.isUser { Spacer(minLength: 50) }
             
-            VStack(alignment: message.isUser ? .trailing : .leading, spacing: 4) {
+            VStack(alignment: message.isUser ? .trailing : .leading, spacing: 6) {
                 Text(message.content)
-                    .padding(12)
-                    .background(message.isUser ? Color.blue : Color(UIColor.secondarySystemBackground))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(
+                        message.isUser
+                        ? AnyShapeStyle(
+                            LinearGradient(
+                                colors: [.blue, .indigo.opacity(0.9)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        : AnyShapeStyle(Color(UIColor.secondarySystemBackground))
+                    )
                     .foregroundColor(message.isUser ? .white : .primary)
-                    .cornerRadius(16)
+                    .cornerRadius(18)
+                    .shadow(color: message.isUser ? .blue.opacity(0.15) : .clear, radius: 4, y: 2)
                 
                 Text(message.timestamp, style: .time)
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.tertiary)
             }
             
-            if !message.isUser { Spacer(minLength: 60) }
+            if !message.isUser { Spacer(minLength: 50) }
         }
     }
 }
@@ -223,17 +287,18 @@ struct TypingIndicatorView: View {
     
     var body: some View {
         HStack {
-            HStack(spacing: 4) {
+            HStack(spacing: 5) {
                 ForEach(0..<3) { index in
                     Circle()
-                        .fill(Color.gray)
+                        .fill(Color.blue.opacity(0.5))
                         .frame(width: 8, height: 8)
-                        .offset(y: animationOffset == index ? -4 : 0)
+                        .offset(y: animationOffset == index ? -5 : 0)
                 }
             }
-            .padding(12)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .background(Color(UIColor.secondarySystemBackground))
-            .cornerRadius(16)
+            .cornerRadius(18)
             
             Spacer()
         }

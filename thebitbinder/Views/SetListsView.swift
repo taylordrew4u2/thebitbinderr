@@ -31,11 +31,23 @@ struct SetListsView: View {
                     VStack(spacing: 24) {
                         ZStack {
                             Circle()
-                                .fill(Color.blue.opacity(0.1))
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.purple.opacity(0.12), Color.purple.opacity(0.08)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                                 .frame(width: 100, height: 100)
                             Image(systemName: "list.bullet.clipboard.fill")
                                 .font(.system(size: 44))
-                                .foregroundStyle(.blue)
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.purple, .purple.opacity(0.8)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                         }
                         
                         VStack(spacing: 8) {
@@ -94,11 +106,17 @@ struct SetListRowView: View {
         HStack(spacing: 14) {
             ZStack {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.blue.opacity(0.1))
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.purple.opacity(0.15), Color.purple.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .frame(width: 44, height: 44)
                 Image(systemName: "list.bullet")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(.purple)
             }
             
             VStack(alignment: .leading, spacing: 6) {
@@ -114,7 +132,7 @@ struct SetListRowView: View {
                         Text("\(setList.jokeIDs.count) jokes")
                             .font(.caption)
                     }
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.purple.opacity(0.8))
                     
                     Text(setList.dateModified, format: .dateTime.month(.abbreviated).day())
                         .font(.caption)

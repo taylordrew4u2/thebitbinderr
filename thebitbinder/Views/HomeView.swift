@@ -15,22 +15,25 @@ struct HomeView: View {
                 Button {
                     showingAIChat = true
                 } label: {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(width: 56, height: 56)
-                        .background(
-                            LinearGradient(
-                                colors: [.blue, .purple],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.blue, Color.indigo],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                        )
-                        .clipShape(Circle())
-                        .shadow(color: .blue.opacity(0.4), radius: 8, x: 0, y: 4)
+                            .frame(width: 56, height: 56)
+                        
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                    .shadow(color: .blue.opacity(0.4), radius: 10, x: 0, y: 5)
                 }
-                .padding(.trailing, 20)
-                .padding(.bottom, 20)
+                .padding(.trailing, 70)
+                .padding(.bottom, 24)
             }
             .navigationTitle("Notepad")
             .navigationBarTitleDisplayMode(.large)
@@ -55,28 +58,32 @@ struct LinedNotepad: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            // Subtle paper texture background
-            Color(UIColor.systemBackground)
-                .ignoresSafeArea()
+            // Warm cream paper background
+            LinearGradient(
+                colors: [Color(red: 0.98, green: 0.96, blue: 0.93), Color(UIColor.systemBackground)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
             
             // Lines
-            LinedBackground(lineSpacing: lineSpacing, lineColor: Color.blue.opacity(0.08))
+            LinedBackground(lineSpacing: lineSpacing, lineColor: Color.blue.opacity(0.1))
                 .ignoresSafeArea()
             
             // Left margin line
             HStack(spacing: 0) {
                 Rectangle()
-                    .fill(Color.red.opacity(0.2))
-                    .frame(width: 1)
-                    .padding(.leading, 40)
+                    .fill(Color.red.opacity(0.25))
+                    .frame(width: 1.5)
+                    .padding(.leading, 42)
                 Spacer()
             }
             .ignoresSafeArea()
             
             TextEditor(text: $text)
                 .scrollContentBackground(.hidden)
-                .padding(.leading, 50)
-                .padding(.trailing, 16)
+                .padding(.leading, 52)
+                .padding(.trailing, 60) // Extra space for notebook spine
                 .padding(.vertical, 20)
                 .font(.system(size: 17, design: .default))
                 .lineSpacing(lineSpacing - 17)

@@ -79,11 +79,23 @@ struct JokesView: View {
         VStack(spacing: 24) {
             ZStack {
                 Circle()
-                    .fill(Color.blue.opacity(0.1))
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.orange.opacity(0.12), Color.orange.opacity(0.08)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .frame(width: 100, height: 100)
                 Image(systemName: "text.bubble.fill")
                     .font(.system(size: 44))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.orange, .orange.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
             }
             
             VStack(spacing: 8) {
@@ -702,16 +714,35 @@ struct FolderChip: View {
     
     var body: some View {
         Button(action: action) {
-            Text(name)
-                .font(.subheadline)
-                .fontWeight(isSelected ? .semibold : .medium)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 10)
-                .background(
-                    Capsule()
-                        .fill(isSelected ? Color.blue : Color(UIColor.systemGray6))
-                )
-                .foregroundColor(isSelected ? .white : .primary)
+            HStack(spacing: 6) {
+                if isSelected {
+                    Image(systemName: "folder.fill")
+                        .font(.caption)
+                }
+                Text(name)
+                    .font(.subheadline)
+                    .fontWeight(isSelected ? .semibold : .medium)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(
+                        isSelected
+                        ? LinearGradient(
+                            colors: [.orange, .orange.opacity(0.85)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        : LinearGradient(
+                            colors: [Color(UIColor.systemGray6), Color(UIColor.systemGray6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            )
+            .foregroundColor(isSelected ? .white : .primary)
+            .shadow(color: isSelected ? .orange.opacity(0.25) : .clear, radius: 4, y: 2)
         }
         .buttonStyle(.plain)
     }
@@ -721,37 +752,50 @@ struct JokeRowView: View {
     let joke: Joke
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(joke.title)
-                .font(.headline)
-                .fontWeight(.semibold)
-                .lineLimit(1)
+        HStack(alignment: .top, spacing: 14) {
+            // Icon badge
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.orange.opacity(0.12))
+                    .frame(width: 44, height: 44)
+                
+                Image(systemName: "text.bubble.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(.orange)
+            }
             
-            Text(joke.content)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-            
-            HStack(spacing: 12) {
-                if let folder = joke.folder {
-                    HStack(spacing: 4) {
-                        Image(systemName: "folder.fill")
-                            .font(.caption2)
-                        Text(folder.name)
-                            .font(.caption)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(joke.title)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                
+                Text(joke.content)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                
+                HStack(spacing: 12) {
+                    if let folder = joke.folder {
+                        HStack(spacing: 4) {
+                            Image(systemName: "folder.fill")
+                                .font(.caption2)
+                            Text(folder.name)
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.orange)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.orange.opacity(0.1))
+                        .clipShape(Capsule())
                     }
-                    .foregroundStyle(.blue)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.1))
-                    .clipShape(Capsule())
+                    
+                    Spacer()
+                    
+                    Text(joke.dateCreated, format: .dateTime.month(.abbreviated).day())
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
-                
-                Spacer()
-                
-                Text(joke.dateCreated, format: .dateTime.month(.abbreviated).day())
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
             }
         }
         .padding(.vertical, 6)

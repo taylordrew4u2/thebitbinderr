@@ -37,11 +37,23 @@ struct NotebookView: View {
                     VStack(spacing: 24) {
                         ZStack {
                             Circle()
-                                .fill(Color.blue.opacity(0.1))
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.brown.opacity(0.15), Color.brown.opacity(0.1)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                                 .frame(width: 100, height: 100)
                             Image(systemName: "book.fill")
                                 .font(.system(size: 44))
-                                .foregroundStyle(.blue)
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.brown, .brown.opacity(0.8)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                         }
                         
                         VStack(spacing: 8) {
