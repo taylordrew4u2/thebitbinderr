@@ -22,6 +22,7 @@ struct ChatMessage: Identifiable, Equatable {
 
 struct AIChatView: View {
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var agentService = ElevenLabsAgentService.shared
     
     @State private var messages: [ChatMessage] = []
     @State private var inputText = ""
@@ -113,6 +114,7 @@ struct AIChatView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         messages = []
+                        agentService.startNewConversation()
                     } label: {
                         Image(systemName: "plus.bubble")
                             .font(.system(size: 16, weight: .semibold))
@@ -138,83 +140,23 @@ struct AIChatView: View {
         isInputFocused = false
         isWaitingForResponse = true
         
-        // Generate response
+        // Send to ElevenLabs agent
         Task {
-            // Brief delay for natural feel
-            try? await Task.sleep(nanoseconds: 400_000_000)
-            
-            let response = generateResponse(for: trimmedText)
-            
-            await MainActor.run {
-                messages.append(ChatMessage(content: response, isUser: false))
-                isWaitingForResponse = false
+            do {
+                let response = try await agentService.sendMessage(trimmedText)
+                
+                await MainActor.run {
+                    messages.append(ChatMessage(content: response, isUser: false))
+                    isWaitingForResponse = false
+                }
+            } catch {
+                await MainActor.run {
+                    isWaitingForResponse = false
+                    errorMessage = error.localizedDescription
+                    showingError = true
+                }
             }
         }
-    }
-    
-    private func generateResponse(for message: String) -> String {
-        let lowercased = message.lowercased()
-        
-        // Comedy-specific responses
-        if lowercased.contains("joke") || lowercased.contains("funny") || lowercased.contains("laugh") || lowercased.contains("bit") {
-            return [
-                "Great joke idea! Try adding a twist at the end - the unexpected is where the laughs hide. What's the setup you're working with? 🎤",
-                "The best jokes have a relatable premise. Think about something everyone experiences but no one talks about. What's your angle? 😄",
-                "Rule of three works great! Set up a pattern with two items, then break it with the third. Classic comedy structure! 📝",
-                "Have you tried flipping the perspective? Sometimes the funniest take is the opposite of what everyone expects! 🎭"
-            ].randomElement()!
-        }
-        
-        if lowercased.contains("set") || lowercased.contains("setlist") || lowercased.contains("show") || lowercased.contains("perform") {
-            return [
-                "For a solid set, open strong and close stronger! Your second-best joke opens, your best joke closes. 🎯",
-                "Try grouping jokes by theme - it creates a nice flow and makes transitions smoother. What themes are you working with? 📋",
-                "5 minutes = roughly 3-4 solid jokes with tags. Don't rush! Let the laughs breathe. ⏱️",
-                "Record your next set! You'll catch things you miss in the moment. The Recordings section is perfect for this! 🎙️"
-            ].randomElement()!
-        }
-        
-        if lowercased.contains("help") || lowercased.contains("how") || lowercased.contains("what") || lowercased.contains("can you") {
-            return [
-                "I'm here to help with your comedy! You can ask me about joke writing, set structure, or brainstorm ideas. What's on your mind? 💡",
-                "Need help? I can assist with joke premises, punchlines, callbacks, and set organization. What would you like to work on? ✨",
-                "I can help you brainstorm, refine your material, or give tips on comedy structure. Fire away! 🚀"
-            ].randomElement()!
-        }
-        
-        if lowercased.contains("hi") || lowercased.contains("hello") || lowercased.contains("hey") || lowercased.contains("yo") {
-            return [
-                "Hey! Ready to make some comedy magic? What are you working on? 🎤",
-                "Hello, fellow comedy enthusiast! What jokes are we crafting today? ✨",
-                "Hey there! The BitBuilder is here and ready to help. What can I do for you? 😄"
-            ].randomElement()!
-        }
-        
-        if lowercased.contains("write") || lowercased.contains("idea") || lowercased.contains("premise") || lowercased.contains("create") {
-            return [
-                "Start with what annoys you or confuses you - frustration is fertile ground for comedy! What's been bugging you lately? 😤➡️😂",
-                "Take something ordinary and ask 'what if?' - What if dogs could text? What if coffee was illegal? Go wild! 💭",
-                "Personal stories are gold! What's the most embarrassing thing that happened to you recently? There's a bit in there! 🏆",
-                "Try the 'hard truth' approach - say the thing everyone thinks but won't say out loud. That's where the big laughs live! 💯"
-            ].randomElement()!
-        }
-        
-        if lowercased.contains("thanks") || lowercased.contains("thank you") || lowercased.contains("awesome") || lowercased.contains("great") {
-            return [
-                "You're welcome! Keep crushing it! 🔥",
-                "Anytime! That's what I'm here for. Keep those jokes coming! 💪",
-                "Happy to help! Go kill it on stage! 🎤✨"
-            ].randomElement()!
-        }
-        
-        // Default responses
-        return [
-            "That's interesting! Tell me more about what you're working on. I'm here to help with your comedy! 🎭",
-            "I like where you're going with this! Want to brainstorm some angles together? 💡",
-            "Comedy gold is in the details! What else can you tell me about this idea? 📝",
-            "Let's dig into this! What's the core observation or truth you want to highlight? 🎯",
-            "Interesting thought! How can we turn this into something that'll get laughs? 🤔"
-        ].randomElement()!
     }
 }
 
@@ -247,7 +189,7 @@ struct BitBuilderWelcomeView: View {
                 Text("The BitBuilder")
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                 
-                Text("Your AI comedy assistant.\nAsk about jokes, sets, or brainstorm ideas!")
+                Text("Your AI comedy assistant.\nPowered by ElevenLabs")
                     .font(.system(size: 15))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
