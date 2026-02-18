@@ -10,6 +10,7 @@ import AVFoundation
 
 /// Service to communicate with ElevenLabs Conversational AI agent
 /// Agent ID: agent_7401ka31ry6qftr9ab89em3339w9
+/// Access Code: 9856
 class ElevenLabsAgentService: NSObject, ObservableObject {
     
     static let shared = ElevenLabsAgentService()
@@ -17,6 +18,7 @@ class ElevenLabsAgentService: NSObject, ObservableObject {
     // MARK: - Configuration
     private let agentId = "agent_7401ka31ry6qftr9ab89em3339w9"
     private let apiKey = "sk_40b434d2a8deebbb7c6683dba782412a0dcc9ff571d042ca"
+    private let accessCode = "9856"
     
     // MARK: - State
     @Published var isLoading = false
@@ -81,7 +83,8 @@ class ElevenLabsAgentService: NSObject, ObservableObject {
         
         var body: [String: Any] = [
             "agent_id": agentId,
-            "text": message
+            "text": message,
+            "access_code": accessCode
         ]
         
         if let convId = conversationId {
