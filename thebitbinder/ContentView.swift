@@ -229,7 +229,7 @@ struct ModernSideMenu: View {
             HStack(spacing: 4) {
                 Image(systemName: "sparkle")
                     .font(.caption2)
-                Text("v1.0")
+                Text("v8.0")
                     .font(.caption2)
             }
             .foregroundStyle(.quaternary)
