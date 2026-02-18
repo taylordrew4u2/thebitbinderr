@@ -115,11 +115,13 @@ struct AIChatView: View {
                                     Circle()
                                         .fill(
                                             inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isWaitingForResponse
-                                            ? Color.gray.opacity(0.3)
-                                            : LinearGradient(
-                                                colors: [.blue, .indigo],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
+                                            ? AnyShapeStyle(Color.gray.opacity(0.3))
+                                            : AnyShapeStyle(
+                                                LinearGradient(
+                                                    colors: [.blue, .indigo],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                )
                                             )
                                         )
                                         .frame(width: 40, height: 40)
@@ -274,7 +276,7 @@ struct ChatBubbleView: View {
                 
                 Text(message.timestamp, style: .time)
                     .font(.caption2)
-                    .foregroundColor(.tertiary)
+                    .foregroundStyle(.tertiary)
             }
             
             if !message.isUser { Spacer(minLength: 50) }
