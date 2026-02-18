@@ -285,7 +285,7 @@ struct ChatBubbleView: View {
 }
 
 struct TypingIndicatorView: View {
-    @State private var animationOffset = 0
+    @State private var isAnimating = false
     
     var body: some View {
         HStack {
@@ -294,7 +294,13 @@ struct TypingIndicatorView: View {
                     Circle()
                         .fill(Color.blue.opacity(0.5))
                         .frame(width: 8, height: 8)
-                        .offset(y: animationOffset == index ? -5 : 0)
+                        .offset(y: isAnimating ? -5 : 0)
+                        .animation(
+                            Animation.easeInOut(duration: 0.4)
+                                .repeatForever(autoreverses: true)
+                                .delay(Double(index) * 0.15),
+                            value: isAnimating
+                        )
                 }
             }
             .padding(.horizontal, 16)
@@ -305,15 +311,7 @@ struct TypingIndicatorView: View {
             Spacer()
         }
         .onAppear {
-            startAnimation()
-        }
-    }
-    
-    private func startAnimation() {
-        Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { _ in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                animationOffset = (animationOffset + 1) % 3
-            }
+            isAnimating = true
         }
     }
 }

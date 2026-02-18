@@ -37,8 +37,8 @@ class ElevenLabsAgentService: ObservableObject {
         // Add user message to history
         conversationHistory.append(["role": "user", "content": message])
         
-        // Simulate network delay for realistic feel
-        try await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
+        // Brief delay for natural feel
+        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
         
         // Generate contextual response
         let response = generateResponse(for: message)
