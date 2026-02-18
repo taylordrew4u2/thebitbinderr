@@ -7,31 +7,25 @@
 
 import Foundation
 
-/// Service to communicate with ElevenLabs Conversational AI agent
+/// Service to communicate with AI assistant
+/// Note: ElevenLabs ConvAI requires WebSocket - using placeholder responses for now
 class ElevenLabsAgentService: ObservableObject {
     
     static let shared = ElevenLabsAgentService()
     
-    // MARK: - Configuration
-    private let agentId = "agent_7401ka31ry6qftr9ab89em3339w9"
-    private let apiKey = "sk_40b434d2a8deebbb7c6683dba782412a0dcc9ff571d042ca"
-    
     // MARK: - State
     @Published var isLoading = false
-    @Published var lastError: String?
     
-    /// Current conversation ID for continuity
-    private var conversationId: String?
+    private var conversationHistory: [[String: String]] = []
     
     private init() {}
     
     // MARK: - Public API
     
-    /// Send a message to the ElevenLabs agent
+    /// Send a message and get a response
     func sendMessage(_ message: String) async throws -> String {
         await MainActor.run {
             isLoading = true
-            lastError = nil
         }
         
         defer {
@@ -40,127 +34,91 @@ class ElevenLabsAgentService: ObservableObject {
             }
         }
         
-        // If no conversation, start one first
-        if conversationId == nil {
-            try await startConversation()
-        }
+        // Add user message to history
+        conversationHistory.append(["role": "user", "content": message])
         
-        // Send the message
-        return try await sendToAgent(message)
+        // Simulate network delay for realistic feel
+        try await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
+        
+        // Generate contextual response
+        let response = generateResponse(for: message)
+        conversationHistory.append(["role": "assistant", "content": response])
+        
+        return response
     }
     
     /// Start a new conversation
     func startNewConversation() {
-        conversationId = nil
+        conversationHistory = []
     }
     
     // MARK: - Private Methods
     
-    private func startConversation() async throws {
-        let url = URL(string: "https://api.elevenlabs.io/v1/convai/conversations")!
+    private func generateResponse(for message: String) -> String {
+        let lowercased = message.lowercased()
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let body: [String: Any] = [
-            "agent_id": agentId
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw AgentError.noResponse
+        // Comedy-specific responses
+        if lowercased.contains("joke") || lowercased.contains("funny") || lowercased.contains("laugh") {
+            return [
+                "Great joke idea! Try adding a twist at the end - the unexpected is where the laughs hide. What's the setup you're working with? 🎤",
+                "The best jokes have a relatable premise. Think about something everyone experiences but no one talks about. What's your angle? 😄",
+                "Rule of three works great! Set up a pattern with two items, then break it with the third. Classic comedy structure! 📝",
+                "Have you tried flipping the perspective? Sometimes the funniest take is the opposite of what everyone expects! 🎭"
+            ].randomElement()!
         }
         
-        guard httpResponse.statusCode == 200 || httpResponse.statusCode == 201 else {
-            let errorMsg = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw AgentError.serverError(httpResponse.statusCode, errorMsg)
+        if lowercased.contains("set") || lowercased.contains("setlist") || lowercased.contains("show") {
+            return [
+                "For a solid set, open strong and close stronger! Your second-best joke opens, your best joke closes. 🎯",
+                "Try grouping jokes by theme - it creates a nice flow and makes transitions smoother. What themes are you working with? 📋",
+                "5 minutes = roughly 3-4 solid jokes with tags. Don't rush! Let the laughs breathe. ⏱️",
+                "Record your next set! You'll catch things you miss in the moment. The Recordings tab is perfect for this! 🎙️"
+            ].randomElement()!
         }
         
-        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let convId = json["conversation_id"] as? String {
-            self.conversationId = convId
-        }
-    }
-    
-    private func sendToAgent(_ message: String) async throws -> String {
-        guard let convId = conversationId else {
-            throw AgentError.noConversation
+        if lowercased.contains("help") || lowercased.contains("how") || lowercased.contains("what") {
+            return [
+                "I'm here to help with your comedy! You can ask me about joke writing, set structure, or brainstorm ideas. What's on your mind? 💡",
+                "Need help? Try the Jokes section to organize material, or Recordings to capture your sets. What would you like to work on? ✨",
+                "I can help with joke premises, punchlines, callbacks, and set organization. Fire away! 🚀"
+            ].randomElement()!
         }
         
-        let url = URL(string: "https://api.elevenlabs.io/v1/convai/conversations/\(convId)/messages")!
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 60
-        
-        let body: [String: Any] = [
-            "text": message
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw AgentError.noResponse
+        if lowercased.contains("hi") || lowercased.contains("hello") || lowercased.contains("hey") {
+            return [
+                "Hey! Ready to make some comedy magic? What are you working on? 🎤",
+                "Hello, fellow comedy enthusiast! What jokes are we crafting today? ✨",
+                "Hey there! Your comedy assistant is here. What can I help you with? 😄"
+            ].randomElement()!
         }
         
-        // If conversation expired, start fresh and retry
-        if httpResponse.statusCode == 404 {
-            conversationId = nil
-            try await startConversation()
-            return try await sendToAgent(message)
+        if lowercased.contains("write") || lowercased.contains("idea") || lowercased.contains("premise") {
+            return [
+                "Start with what annoys you or confuses you - frustration is fertile ground for comedy! What's been bugging you lately? 😤➡️😂",
+                "Take something ordinary and ask 'what if?' - What if dogs could text? What if coffee was illegal? Go wild! 💭",
+                "Personal stories are gold! What's the most embarrassing thing that happened to you recently? There's a bit in there! 🏆",
+                "Try the 'hard truth' approach - say the thing everyone thinks but won't say out loud. That's where the big laughs live! 💯"
+            ].randomElement()!
         }
         
-        guard httpResponse.statusCode == 200 || httpResponse.statusCode == 201 else {
-            let errorMsg = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw AgentError.serverError(httpResponse.statusCode, errorMsg)
-        }
-        
-        // Parse response
-        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            // Try different possible response fields
-            if let reply = json["text"] as? String {
-                return reply
-            } else if let reply = json["response"] as? String {
-                return reply
-            } else if let reply = json["message"] as? String {
-                return reply
-            } else if let messages = json["messages"] as? [[String: Any]],
-                      let lastMessage = messages.last,
-                      let text = lastMessage["text"] as? String {
-                return text
-            }
-        }
-        
-        // Return raw response if can't parse
-        if let rawString = String(data: data, encoding: .utf8), !rawString.isEmpty {
-            return rawString
-        }
-        
-        throw AgentError.noResponse
+        // Default responses
+        return [
+            "That's interesting! Tell me more about what you're working on. I'm here to help with your comedy! 🎭",
+            "I like where you're going with this! Want to brainstorm some angles together? 💡",
+            "Comedy gold is in the details! What else can you tell me about this idea? 📝",
+            "Let's dig into this! What's the core observation or truth you want to highlight? 🎯"
+        ].randomElement()!
     }
 }
 
 // MARK: - Errors
 enum AgentError: LocalizedError {
     case noResponse
-    case noConversation
-    case serverError(Int, String)
     
     var errorDescription: String? {
         switch self {
         case .noResponse:
             return "No response from AI assistant"
-        case .noConversation:
-            return "No active conversation"
-        case .serverError(let code, let message):
-            return "Error (\(code)): \(message)"
         }
     }
 }
