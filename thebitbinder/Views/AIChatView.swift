@@ -24,14 +24,6 @@ struct ChatMessage: Identifiable, Equatable {
 /// Conversational AI chat view powered by ElevenLabs agent
 struct AIChatView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var agentService = ElevenLabsAgentService.shared
-    
-    @State private var messages: [ChatMessage] = []
-    @State private var inputText = ""
-    @State private var isWaitingForResponse = false
-    @State private var showingError = false
-    @State private var errorMessage = ""
-    @FocusState private var isInputFocused: Bool
     
     var body: some View {
         NavigationStack {
@@ -47,93 +39,56 @@ struct AIChatView: View {
                 )
                 .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
-                    // Chat messages
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            LazyVStack(spacing: 16) {
-                                // Welcome message
-                                if messages.isEmpty {
-                                    WelcomeMessageView()
-                                        .padding(.top, 40)
-                                }
-                                
-                                ForEach(messages) { message in
-                                    ChatBubbleView(message: message)
-                                        .id(message.id)
-                                }
-                                
-                                // Typing indicator
-                                if isWaitingForResponse {
-                                    TypingIndicatorView()
-                                        .id("typing")
-                                }
-                            }
-                            .padding(.horizontal)
-                            .padding(.vertical, 12)
-                        }
-                        .onChange(of: messages.count) {
-                            withAnimation {
-                                if let lastMessage = messages.last {
-                                    proxy.scrollTo(lastMessage.id, anchor: .bottom)
-                                }
-                            }
-                        }
-                        .onChange(of: isWaitingForResponse) {
-                            if isWaitingForResponse {
-                                withAnimation {
-                                    proxy.scrollTo("typing", anchor: .bottom)
-                                }
-                            }
-                        }
+                // Coming Soon content
+                VStack(spacing: 24) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.blue.opacity(0.12), Color.indigo.opacity(0.08)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 120, height: 120)
+                        
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 50))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.blue, .indigo],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                     }
                     
-                    // Input area
-                    VStack(spacing: 0) {
-                        Divider()
+                    VStack(spacing: 12) {
+                        Text("AI Assistant")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
                         
-                        HStack(spacing: 12) {
-                            TextField("Ask me anything...", text: $inputText, axis: .vertical)
-                                .textFieldStyle(.plain)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 22)
-                                        .fill(Color(UIColor.secondarySystemBackground))
+                        Text("Coming Soon")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.blue, .purple],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
                                 )
-                                .lineLimit(1...5)
-                                .focused($isInputFocused)
-                                .submitLabel(.send)
-                                .onSubmit {
-                                    sendMessage()
-                                }
-                            
-                            Button {
-                                sendMessage()
-                            } label: {
-                                ZStack {
-                                    Circle()
-                                        .fill(
-                                            inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isWaitingForResponse
-                                            ? Color.gray.opacity(0.3)
-                                            : LinearGradient(
-                                                colors: [.blue, .indigo],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                        .frame(width: 40, height: 40)
-                                    
-                                    Image(systemName: "arrow.up")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(.white)
-                                }
-                            }
-                            .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isWaitingForResponse)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(.ultraThinMaterial)
+                            )
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                            .background(
+                                Capsule()
+                                    .fill(Color.blue.opacity(0.1))
+                            )
+                        
+                        Text("We're working on something amazing to help with your comedy writing!")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                            .padding(.top, 8)
                     }
                 }
             }
@@ -149,168 +104,6 @@ struct AIChatView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        startNewChat()
-                    } label: {
-                        Image(systemName: "plus.message")
-                            .foregroundStyle(.blue)
-                    }
-                }
-            }
-            .alert("Error", isPresented: $showingError) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(errorMessage)
-            }
-        }
-    }
-    
-    private func sendMessage() {
-        let trimmedText = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedText.isEmpty else { return }
-        
-        // Add user message
-        let userMessage = ChatMessage(content: trimmedText, isUser: true)
-        messages.append(userMessage)
-        inputText = ""
-        isInputFocused = false
-        
-        // Send to agent
-        isWaitingForResponse = true
-        
-        Task {
-            do {
-                let reply = try await agentService.sendMessage(trimmedText)
-                
-                await MainActor.run {
-                    let aiMessage = ChatMessage(content: reply, isUser: false)
-                    messages.append(aiMessage)
-                    isWaitingForResponse = false
-                }
-            } catch {
-                await MainActor.run {
-                    isWaitingForResponse = false
-                    errorMessage = error.localizedDescription
-                    showingError = true
-                }
-            }
-        }
-    }
-    
-    private func startNewChat() {
-        messages = []
-        agentService.startNewConversation()
-    }
-}
-
-// MARK: - Supporting Views
-
-struct WelcomeMessageView: View {
-    var body: some View {
-        VStack(spacing: 20) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.blue.opacity(0.12), Color.indigo.opacity(0.08)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 100, height: 100)
-                
-                Image(systemName: "sparkles")
-                    .font(.system(size: 44))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.blue, .indigo],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-            
-            VStack(spacing: 8) {
-                Text("AI Assistant")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                
-                Text("Ask me anything about comedy, jokes, or get help with your sets!")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-            }
-        }
-    }
-}
-
-struct ChatBubbleView: View {
-    let message: ChatMessage
-    
-    var body: some View {
-        HStack {
-            if message.isUser { Spacer(minLength: 50) }
-            
-            VStack(alignment: message.isUser ? .trailing : .leading, spacing: 6) {
-                Text(message.content)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(
-                        message.isUser
-                        ? AnyShapeStyle(
-                            LinearGradient(
-                                colors: [.blue, .indigo.opacity(0.9)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        : AnyShapeStyle(Color(UIColor.secondarySystemBackground))
-                    )
-                    .foregroundColor(message.isUser ? .white : .primary)
-                    .cornerRadius(18)
-                    .shadow(color: message.isUser ? .blue.opacity(0.15) : .clear, radius: 4, y: 2)
-                
-                Text(message.timestamp, style: .time)
-                    .font(.caption2)
-                    .foregroundColor(.tertiary)
-            }
-            
-            if !message.isUser { Spacer(minLength: 50) }
-        }
-    }
-}
-
-struct TypingIndicatorView: View {
-    @State private var animationOffset = 0
-    
-    var body: some View {
-        HStack {
-            HStack(spacing: 5) {
-                ForEach(0..<3) { index in
-                    Circle()
-                        .fill(Color.blue.opacity(0.5))
-                        .frame(width: 8, height: 8)
-                        .offset(y: animationOffset == index ? -5 : 0)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color(UIColor.secondarySystemBackground))
-            .cornerRadius(18)
-            
-            Spacer()
-        }
-        .onAppear {
-            startAnimation()
-        }
-    }
-    
-    private func startAnimation() {
-        Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { timer in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                animationOffset = (animationOffset + 1) % 3
             }
         }
     }
