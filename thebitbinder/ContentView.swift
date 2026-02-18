@@ -279,7 +279,7 @@ struct ModernMenuItem: View {
                 // Chevron indicator
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(isSelected ? screen.color : .quaternary)
+                    .foregroundStyle(isSelected ? AnyShapeStyle(screen.color) : AnyShapeStyle(.quaternary))
             }
             .padding(14)
             .background(
