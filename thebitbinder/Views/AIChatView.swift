@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-/// A single message in the AI chat conversation
 struct ChatMessage: Identifiable, Equatable {
     let id = UUID()
     let content: String
@@ -21,7 +20,6 @@ struct ChatMessage: Identifiable, Equatable {
     }
 }
 
-/// Conversational AI chat view powered by ElevenLabs agent
 struct AIChatView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var agentService = ElevenLabsAgentService.shared
@@ -33,14 +31,15 @@ struct AIChatView: View {
     @State private var errorMessage = ""
     @FocusState private var isInputFocused: Bool
     
+    private let gradientColors = [Color(red: 0.4, green: 0.3, blue: 1.0), Color(red: 0.6, green: 0.2, blue: 0.9)]
+    
     var body: some View {
         NavigationStack {
             ZStack {
-                // Subtle paper background
                 LinearGradient(
                     colors: [
-                        Color(red: 0.98, green: 0.96, blue: 0.93),
-                        Color(UIColor.systemBackground)
+                        Color(UIColor.systemBackground),
+                        Color(UIColor.secondarySystemBackground).opacity(0.5)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
@@ -48,32 +47,29 @@ struct AIChatView: View {
                 .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Chat messages
                     ScrollViewReader { proxy in
                         ScrollView {
                             LazyVStack(spacing: 16) {
-                                // Welcome message
                                 if messages.isEmpty {
-                                    WelcomeMessageView()
-                                        .padding(.top, 40)
+                                    ModernWelcomeView(gradientColors: gradientColors)
+                                        .padding(.top, 60)
                                 }
                                 
                                 ForEach(messages) { message in
-                                    ChatBubbleView(message: message)
+                                    ModernChatBubble(message: message, gradientColors: gradientColors)
                                         .id(message.id)
                                 }
                                 
-                                // Typing indicator
                                 if isWaitingForResponse {
-                                    TypingIndicatorView()
+                                    ModernTypingIndicator()
                                         .id("typing")
                                 }
                             }
-                            .padding(.horizontal)
-                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 16)
                         }
                         .onChange(of: messages.count) {
-                            withAnimation {
+                            withAnimation(.easeOut(duration: 0.2)) {
                                 if let lastMessage = messages.last {
                                     proxy.scrollTo(lastMessage.id, anchor: .bottom)
                                 }
@@ -81,62 +77,20 @@ struct AIChatView: View {
                         }
                         .onChange(of: isWaitingForResponse) {
                             if isWaitingForResponse {
-                                withAnimation {
+                                withAnimation(.easeOut(duration: 0.2)) {
                                     proxy.scrollTo("typing", anchor: .bottom)
                                 }
                             }
                         }
                     }
                     
-                    // Input area
-                    VStack(spacing: 0) {
-                        Divider()
-                        
-                        HStack(spacing: 12) {
-                            TextField("Ask me anything...", text: $inputText, axis: .vertical)
-                                .textFieldStyle(.plain)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 22)
-                                        .fill(Color(UIColor.secondarySystemBackground))
-                                )
-                                .lineLimit(1...5)
-                                .focused($isInputFocused)
-                                .submitLabel(.send)
-                                .onSubmit {
-                                    sendMessage()
-                                }
-                            
-                            Button {
-                                sendMessage()
-                            } label: {
-                                ZStack {
-                                    Circle()
-                                        .fill(
-                                            inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isWaitingForResponse
-                                            ? AnyShapeStyle(Color.gray.opacity(0.3))
-                                            : AnyShapeStyle(
-                                                LinearGradient(
-                                                    colors: [.blue, .indigo],
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                )
-                                            )
-                                        )
-                                        .frame(width: 40, height: 40)
-                                    
-                                    Image(systemName: "arrow.up")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(.white)
-                                }
-                            }
-                            .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isWaitingForResponse)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(.ultraThinMaterial)
-                    }
+                    ModernInputBar(
+                        inputText: $inputText,
+                        isInputFocused: _isInputFocused,
+                        isWaitingForResponse: isWaitingForResponse,
+                        gradientColors: gradientColors,
+                        sendAction: sendMessage
+                    )
                 }
             }
             .navigationTitle("The BitBuilder")
@@ -146,9 +100,11 @@ struct AIChatView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 22))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(.secondary)
+                            .frame(width: 32, height: 32)
+                            .background(Circle().fill(Color(UIColor.tertiarySystemFill)))
                     }
                 }
                 
@@ -156,8 +112,9 @@ struct AIChatView: View {
                     Button {
                         startNewChat()
                     } label: {
-                        Image(systemName: "plus.message")
-                            .foregroundStyle(.blue)
+                        Image(systemName: "plus.bubble")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(gradientColors[0])
                     }
                 }
             }
@@ -173,22 +130,17 @@ struct AIChatView: View {
         let trimmedText = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return }
         
-        // Add user message
         let userMessage = ChatMessage(content: trimmedText, isUser: true)
         messages.append(userMessage)
         inputText = ""
         isInputFocused = false
-        
-        // Send to agent
         isWaitingForResponse = true
         
         Task {
             do {
                 let reply = try await agentService.sendMessage(trimmedText)
-                
                 await MainActor.run {
-                    let aiMessage = ChatMessage(content: reply, isUser: false)
-                    messages.append(aiMessage)
+                    messages.append(ChatMessage(content: reply, isUser: false))
                     isWaitingForResponse = false
                 }
             } catch {
@@ -207,112 +159,158 @@ struct AIChatView: View {
     }
 }
 
-// MARK: - Supporting Views
-
-struct WelcomeMessageView: View {
+struct ModernWelcomeView: View {
+    let gradientColors: [Color]
+    
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 24) {
             ZStack {
                 Circle()
                     .fill(
-                        LinearGradient(
-                            colors: [Color.blue.opacity(0.12), Color.indigo.opacity(0.08)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                        RadialGradient(
+                            colors: [gradientColors[0].opacity(0.2), gradientColors[1].opacity(0.05)],
+                            center: .center,
+                            startRadius: 20,
+                            endRadius: 70
                         )
                     )
-                    .frame(width: 100, height: 100)
+                    .frame(width: 120, height: 120)
                 
                 Image(systemName: "sparkles")
-                    .font(.system(size: 44))
+                    .font(.system(size: 50, weight: .medium))
                     .foregroundStyle(
-                        LinearGradient(
-                            colors: [.blue, .indigo],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                        LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing)
                     )
             }
             
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 Text("The BitBuilder")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
                 
-                Text("Ask me anything about comedy, jokes, or get help with your sets!")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                Text("Your AI comedy assistant.\nAsk about jokes, sets, or brainstorm ideas!")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    .lineSpacing(4)
             }
+            .padding(.horizontal, 24)
         }
     }
 }
 
-struct ChatBubbleView: View {
+struct ModernChatBubble: View {
     let message: ChatMessage
+    let gradientColors: [Color]
     
     var body: some View {
-        HStack {
-            if message.isUser { Spacer(minLength: 50) }
+        HStack(alignment: .bottom, spacing: 8) {
+            if message.isUser { Spacer(minLength: 40) }
             
-            VStack(alignment: message.isUser ? .trailing : .leading, spacing: 6) {
+            VStack(alignment: message.isUser ? .trailing : .leading, spacing: 4) {
                 Text(message.content)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
+                    .font(.system(size: 16))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                     .background(
                         message.isUser
-                        ? AnyShapeStyle(
-                            LinearGradient(
-                                colors: [.blue, .indigo.opacity(0.9)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        ? AnyShapeStyle(LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing))
                         : AnyShapeStyle(Color(UIColor.secondarySystemBackground))
                     )
                     .foregroundColor(message.isUser ? .white : .primary)
-                    .cornerRadius(18)
-                    .shadow(color: message.isUser ? .blue.opacity(0.15) : .clear, radius: 4, y: 2)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .shadow(color: message.isUser ? gradientColors[0].opacity(0.2) : .clear, radius: 6, y: 3)
                 
                 Text(message.timestamp, style: .time)
-                    .font(.caption2)
+                    .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 4)
             }
             
-            if !message.isUser { Spacer(minLength: 50) }
+            if !message.isUser { Spacer(minLength: 40) }
         }
     }
 }
 
-struct TypingIndicatorView: View {
+struct ModernInputBar: View {
+    @Binding var inputText: String
+    @FocusState var isInputFocused: Bool
+    let isWaitingForResponse: Bool
+    let gradientColors: [Color]
+    let sendAction: () -> Void
+    
+    private var canSend: Bool {
+        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isWaitingForResponse
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            Divider()
+            
+            HStack(alignment: .bottom, spacing: 12) {
+                TextField("Message The BitBuilder...", text: $inputText, axis: .vertical)
+                    .font(.system(size: 16))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(Color(UIColor.secondarySystemBackground))
+                    )
+                    .lineLimit(1...5)
+                    .focused($isInputFocused)
+                    .submitLabel(.send)
+                    .onSubmit(sendAction)
+                
+                Button(action: sendAction) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                canSend
+                                ? LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing)
+                                : LinearGradient(colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.2)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            )
+                            .frame(width: 44, height: 44)
+                        
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                }
+                .disabled(!canSend)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(.ultraThinMaterial)
+        }
+    }
+}
+
+struct ModernTypingIndicator: View {
     @State private var isAnimating = false
     
     var body: some View {
         HStack {
-            HStack(spacing: 5) {
+            HStack(spacing: 6) {
                 ForEach(0..<3) { index in
                     Circle()
-                        .fill(Color.blue.opacity(0.5))
+                        .fill(Color.secondary.opacity(0.6))
                         .frame(width: 8, height: 8)
-                        .offset(y: isAnimating ? -5 : 0)
+                        .offset(y: isAnimating ? -6 : 0)
                         .animation(
-                            Animation.easeInOut(duration: 0.4)
+                            Animation.easeInOut(duration: 0.5)
                                 .repeatForever(autoreverses: true)
-                                .delay(Double(index) * 0.15),
+                                .delay(Double(index) * 0.12),
                             value: isAnimating
                         )
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
             .background(Color(UIColor.secondarySystemBackground))
-            .cornerRadius(18)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             
             Spacer()
         }
-        .onAppear {
-            isAnimating = true
-        }
+        .onAppear { isAnimating = true }
     }
 }
 

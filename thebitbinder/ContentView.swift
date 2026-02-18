@@ -18,12 +18,15 @@ struct ContentView: View {
                     .transition(.opacity)
             } else {
                 MainTabView()
-                    .transition(.opacity)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 1.02)),
+                        removal: .opacity
+                    ))
             }
         }
         .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                withAnimation(.easeInOut(duration: 0.5)) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                withAnimation(.easeOut(duration: 0.4)) {
                     showLaunchScreen = false
                 }
             }
@@ -36,25 +39,25 @@ enum AppScreen: String, CaseIterable {
     case jokes = "Jokes"
     case sets = "Set Lists"
     case recordings = "Recordings"
-    case notebookSaver = "Notebook Saver"
+    case notebookSaver = "Notebook"
     
     var icon: String {
         switch self {
-        case .notepad: return "note.text"
-        case .jokes: return "text.bubble.fill"
-        case .sets: return "list.bullet.clipboard.fill"
-        case .recordings: return "mic.fill"
-        case .notebookSaver: return "book.fill"
+        case .notepad: return "square.and.pencil"
+        case .jokes: return "face.smiling.fill"
+        case .sets: return "list.bullet.rectangle.fill"
+        case .recordings: return "waveform.circle.fill"
+        case .notebookSaver: return "book.closed.fill"
         }
     }
     
     var color: Color {
         switch self {
-        case .notepad: return .blue
-        case .jokes: return .orange
-        case .sets: return .purple
-        case .recordings: return .red
-        case .notebookSaver: return .brown
+        case .notepad: return Color(red: 0.3, green: 0.6, blue: 1.0)
+        case .jokes: return Color(red: 1.0, green: 0.6, blue: 0.2)
+        case .sets: return Color(red: 0.7, green: 0.4, blue: 1.0)
+        case .recordings: return Color(red: 1.0, green: 0.35, blue: 0.4)
+        case .notebookSaver: return Color(red: 0.6, green: 0.5, blue: 0.4)
         }
     }
 }
@@ -65,7 +68,7 @@ struct MainTabView: View {
     
     var body: some View {
         ZStack(alignment: .trailing) {
-            // Main content
+            // Main content with subtle animation
             Group {
                 switch selectedScreen {
                 case .notepad:
@@ -82,181 +85,210 @@ struct MainTabView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             
-            // Dim overlay when menu is open
+            // Glassmorphic overlay
             if showMenu {
-                Color.black.opacity(0.4)
+                Color.black.opacity(0.5)
                     .ignoresSafeArea()
                     .onTapGesture {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                             showMenu = false
                         }
                     }
+                    .transition(.opacity)
             }
             
-            // Side menu panel (slides in from right)
+            // Modern side menu
             if showMenu {
-                SideMenuView(selectedScreen: $selectedScreen, showMenu: $showMenu)
-                    .transition(.move(edge: .trailing))
+                ModernSideMenu(selectedScreen: $selectedScreen, showMenu: $showMenu)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing).combined(with: .opacity),
+                        removal: .move(edge: .trailing).combined(with: .opacity)
+                    ))
             }
             
-            // Menu toggle button (always visible on right edge)
+            // Floating menu button
             if !showMenu {
                 VStack {
                     Spacer()
                     
                     Button {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                             showMenu = true
                         }
                     } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "line.3.horizontal")
-                                .font(.system(size: 14, weight: .semibold))
-                            Text("Menu")
-                                .font(.system(size: 12, weight: .semibold))
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(
-                            Capsule()
+                        ZStack {
+                            Circle()
+                                .fill(.ultraThinMaterial)
+                                .frame(width: 56, height: 56)
+                            
+                            Circle()
                                 .fill(
                                     LinearGradient(
-                                        colors: [Color.blue, Color.indigo],
+                                        colors: [selectedScreen.color, selectedScreen.color.opacity(0.7)],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                     )
                                 )
-                                .shadow(color: .blue.opacity(0.4), radius: 8, x: 0, y: 4)
-                        )
+                                .frame(width: 52, height: 52)
+                            
+                            Image(systemName: "square.grid.2x2")
+                                .font(.system(size: 22, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                        .shadow(color: selectedScreen.color.opacity(0.4), radius: 12, x: 0, y: 6)
                     }
-                    .padding(.trailing, 16)
-                    .padding(.bottom, 100)
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 40)
                 }
             }
         }
     }
 }
 
-// MARK: - Side Menu View
-struct SideMenuView: View {
+// MARK: - Modern Side Menu
+struct ModernSideMenu: View {
     @Binding var selectedScreen: AppScreen
     @Binding var showMenu: Bool
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "book.closed.fill")
-                            .font(.system(size: 22))
-                            .foregroundStyle(
+            // Header with gradient
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Spacer()
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            showMenu = false
+                        }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .frame(width: 32, height: 32)
+                            .background(Circle().fill(Color(UIColor.tertiarySystemFill)))
+                    }
+                }
+                
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(
                                 LinearGradient(
                                     colors: [.blue, .indigo],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
+                            .frame(width: 48, height: 48)
                         
-                        Text("BitBinder")
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                        Image(systemName: "book.closed.fill")
+                            .font(.system(size: 22))
+                            .foregroundColor(.white)
                     }
                     
-                    Text("Your comedy companion")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                
-                Spacer()
-                
-                Button {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        showMenu = false
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("BitBinder")
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                        Text("Your comedy companion")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
                     }
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(.secondary)
                 }
+                .padding(.top, 8)
             }
             .padding(20)
-            .background(Color(UIColor.secondarySystemBackground).opacity(0.5))
+            .background(
+                LinearGradient(
+                    colors: [Color(UIColor.secondarySystemBackground), Color(UIColor.systemBackground)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
             
-            // Menu items
-            VStack(spacing: 4) {
-                ForEach(AppScreen.allCases, id: \.self) { screen in
-                    MenuItemButton(
-                        screen: screen,
-                        isSelected: selectedScreen == screen
-                    ) {
-                        selectedScreen = screen
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            showMenu = false
+            // Menu items with modern cards
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 8) {
+                    ForEach(AppScreen.allCases, id: \.self) { screen in
+                        ModernMenuItem(
+                            screen: screen,
+                            isSelected: selectedScreen == screen
+                        ) {
+                            selectedScreen = screen
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                showMenu = false
+                            }
                         }
                     }
                 }
+                .padding(16)
             }
-            .padding(.vertical, 16)
-            .padding(.horizontal, 12)
             
             Spacer()
             
-            // Version footer
-            Text("v1.0")
-                .font(.caption2)
-                .foregroundStyle(.quaternary)
-                .padding(.bottom, 20)
+            // Footer
+            HStack(spacing: 4) {
+                Image(systemName: "sparkle")
+                    .font(.caption2)
+                Text("v1.0")
+                    .font(.caption2)
+            }
+            .foregroundStyle(.quaternary)
+            .padding(.bottom, 24)
         }
-        .frame(width: 280)
+        .frame(width: 300)
         .frame(maxHeight: .infinity)
         .background(
             Color(UIColor.systemBackground)
-                .shadow(color: .black.opacity(0.2), radius: 20, x: -10, y: 0)
+                .shadow(color: .black.opacity(0.25), radius: 30, x: -15, y: 0)
         )
         .ignoresSafeArea()
     }
 }
 
-// MARK: - Menu Item Button
-struct MenuItemButton: View {
+// MARK: - Modern Menu Item
+struct ModernMenuItem: View {
     let screen: AppScreen
     let isSelected: Bool
     let action: () -> Void
     
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 14) {
-                // Icon
+            HStack(spacing: 16) {
+                // Icon with gradient background
                 ZStack {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(screen.color.opacity(isSelected ? 0.2 : 0.1))
-                        .frame(width: 40, height: 40)
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(
+                            isSelected
+                            ? LinearGradient(colors: [screen.color, screen.color.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            : LinearGradient(colors: [screen.color.opacity(0.15), screen.color.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
+                        .frame(width: 44, height: 44)
                     
                     Image(systemName: screen.icon)
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(isSelected ? screen.color : .secondary)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(isSelected ? .white : screen.color)
                 }
                 
                 // Label
                 Text(screen.rawValue)
-                    .font(.system(size: 16, weight: isSelected ? .semibold : .medium))
-                    .foregroundColor(isSelected ? .primary : .secondary)
+                    .font(.system(size: 17, weight: isSelected ? .semibold : .medium))
+                    .foregroundColor(.primary)
                 
                 Spacer()
                 
-                // Selection indicator
-                if isSelected {
-                    Circle()
-                        .fill(screen.color)
-                        .frame(width: 8, height: 8)
-                }
+                // Chevron indicator
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(isSelected ? screen.color : .quaternary)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(14)
             .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(isSelected ? screen.color.opacity(0.1) : Color.clear)
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(isSelected ? screen.color.opacity(0.1) : Color(UIColor.secondarySystemBackground).opacity(0.5))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isSelected ? screen.color.opacity(0.3) : Color.clear, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)

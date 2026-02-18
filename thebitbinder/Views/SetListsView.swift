@@ -102,46 +102,52 @@ struct SetListsView: View {
 struct SetListRowView: View {
     let setList: SetList
     
+    private let accentColor = Color(red: 0.7, green: 0.4, blue: 1.0)
+    
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(
                         LinearGradient(
-                            colors: [Color.purple.opacity(0.15), Color.purple.opacity(0.1)],
+                            colors: [accentColor.opacity(0.15), accentColor.opacity(0.08)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 44, height: 44)
-                Image(systemName: "list.bullet")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(.purple)
+                    .frame(width: 46, height: 46)
+                
+                Image(systemName: "list.bullet.rectangle.fill")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(accentColor)
             }
             
             VStack(alignment: .leading, spacing: 6) {
                 Text(setList.name)
-                    .font(.headline)
-                    .fontWeight(.semibold)
+                    .font(.system(size: 16, weight: .semibold))
                     .lineLimit(1)
                 
-                HStack(spacing: 16) {
+                HStack(spacing: 14) {
                     HStack(spacing: 4) {
-                        Image(systemName: "text.bubble")
-                            .font(.caption2)
+                        Image(systemName: "face.smiling")
+                            .font(.system(size: 11))
                         Text("\(setList.jokeIDs.count) jokes")
-                            .font(.caption)
+                            .font(.system(size: 13))
                     }
-                    .foregroundStyle(.purple.opacity(0.8))
+                    .foregroundStyle(accentColor.opacity(0.9))
                     
                     Text(setList.dateModified, format: .dateTime.month(.abbreviated).day())
-                        .font(.caption)
+                        .font(.system(size: 12))
                         .foregroundStyle(.tertiary)
                 }
             }
             
             Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.quaternary)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
     }
 }

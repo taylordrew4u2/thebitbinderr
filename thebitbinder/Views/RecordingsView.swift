@@ -113,47 +113,53 @@ struct RecordingsView: View {
 struct RecordingRowView: View {
     let recording: Recording
     
+    private let accentColor = Color(red: 1.0, green: 0.35, blue: 0.4)
+    
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
-                Circle()
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(
                         LinearGradient(
-                            colors: [Color.red.opacity(0.15), Color.red.opacity(0.1)],
+                            colors: [accentColor.opacity(0.15), accentColor.opacity(0.08)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 44, height: 44)
-                Image(systemName: "play.fill")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.red)
+                    .frame(width: 46, height: 46)
+                
+                Image(systemName: "waveform")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(accentColor)
             }
             
             VStack(alignment: .leading, spacing: 6) {
                 Text(recording.name)
-                    .font(.headline)
-                    .fontWeight(.semibold)
+                    .font(.system(size: 16, weight: .semibold))
                     .lineLimit(1)
                 
-                HStack(spacing: 16) {
+                HStack(spacing: 14) {
                     HStack(spacing: 4) {
                         Image(systemName: "clock")
-                            .font(.caption2)
+                            .font(.system(size: 11))
                         Text(durationString(from: recording.duration))
-                            .font(.caption)
+                            .font(.system(size: 13))
                     }
                     .foregroundStyle(.secondary)
                     
                     Text(recording.dateCreated, format: .dateTime.month(.abbreviated).day())
-                        .font(.caption)
+                        .font(.system(size: 12))
                         .foregroundStyle(.tertiary)
                 }
             }
             
             Spacer()
+            
+            Image(systemName: "play.circle.fill")
+                .font(.system(size: 28))
+                .foregroundStyle(accentColor.opacity(0.8))
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
     }
     
     private func durationString(from duration: TimeInterval) -> String {

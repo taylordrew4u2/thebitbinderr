@@ -8,7 +8,8 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottomTrailing) {
-                LinedNotepad(text: $notepadText)
+                // Modern notepad
+                ModernNotepad(text: $notepadText)
                     .ignoresSafeArea(edges: .bottom)
                 
                 // AI Chat floating button
@@ -17,23 +18,27 @@ struct HomeView: View {
                 } label: {
                     ZStack {
                         Circle()
+                            .fill(.ultraThinMaterial)
+                            .frame(width: 60, height: 60)
+                        
+                        Circle()
                             .fill(
                                 LinearGradient(
-                                    colors: [Color.blue, Color.indigo],
+                                    colors: [Color(red: 0.4, green: 0.3, blue: 1.0), Color(red: 0.6, green: 0.2, blue: 0.9)],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .frame(width: 56, height: 56)
+                            .frame(width: 54, height: 54)
                         
                         Image(systemName: "sparkles")
-                            .font(.system(size: 22, weight: .semibold))
+                            .font(.system(size: 24, weight: .semibold))
                             .foregroundColor(.white)
                     }
-                    .shadow(color: .blue.opacity(0.4), radius: 10, x: 0, y: 5)
+                    .shadow(color: Color(red: 0.5, green: 0.3, blue: 1.0).opacity(0.5), radius: 12, x: 0, y: 6)
                 }
-                .padding(.trailing, 70)
-                .padding(.bottom, 24)
+                .padding(.trailing, 80)
+                .padding(.bottom, 30)
             }
             .navigationTitle("Notepad")
             .navigationBarTitleDisplayMode(.large)
@@ -52,38 +57,48 @@ struct HomeView: View {
     }
 }
 
-struct LinedNotepad: View {
+struct ModernNotepad: View {
     @Binding var text: String
-    private let lineSpacing: CGFloat = 32
+    private let lineSpacing: CGFloat = 34
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            // Warm cream paper background
+            // Clean gradient background
             LinearGradient(
-                colors: [Color(red: 0.98, green: 0.96, blue: 0.93), Color(UIColor.systemBackground)],
+                colors: [
+                    Color(red: 1.0, green: 0.99, blue: 0.96),
+                    Color(red: 0.98, green: 0.97, blue: 0.94)
+                ],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
             
-            // Lines
-            LinedBackground(lineSpacing: lineSpacing, lineColor: Color.blue.opacity(0.1))
+            // Subtle lines
+            ModernLinedBackground(lineSpacing: lineSpacing)
                 .ignoresSafeArea()
             
-            // Left margin line
+            // Left margin accent
             HStack(spacing: 0) {
                 Rectangle()
-                    .fill(Color.red.opacity(0.25))
-                    .frame(width: 1.5)
-                    .padding(.leading, 42)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.red.opacity(0.3), Color.red.opacity(0.15)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: 2)
+                    .padding(.leading, 44)
                 Spacer()
             }
             .ignoresSafeArea()
             
+            // Text editor
             TextEditor(text: $text)
                 .scrollContentBackground(.hidden)
-                .padding(.leading, 52)
-                .padding(.trailing, 60) // Extra space for notebook spine
+                .padding(.leading, 56)
+                .padding(.trailing, 70)
                 .padding(.vertical, 20)
                 .font(.system(size: 17, design: .default))
                 .lineSpacing(lineSpacing - 17)
@@ -92,9 +107,8 @@ struct LinedNotepad: View {
     }
 }
 
-struct LinedBackground: View {
+struct ModernLinedBackground: View {
     let lineSpacing: CGFloat
-    let lineColor: Color
 
     var body: some View {
         Canvas { context, size in
@@ -103,7 +117,7 @@ struct LinedBackground: View {
                 var path = Path()
                 path.move(to: CGPoint(x: 0, y: y))
                 path.addLine(to: CGPoint(x: size.width, y: y))
-                context.stroke(path, with: .color(lineColor), lineWidth: 1)
+                context.stroke(path, with: .color(Color.blue.opacity(0.08)), lineWidth: 1)
                 y += lineSpacing
             }
         }

@@ -80,18 +80,20 @@ struct JokesView: View {
             ZStack {
                 Circle()
                     .fill(
-                        LinearGradient(
-                            colors: [Color.orange.opacity(0.12), Color.orange.opacity(0.08)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                        RadialGradient(
+                            colors: [Color(red: 1.0, green: 0.6, blue: 0.2).opacity(0.2), Color(red: 1.0, green: 0.6, blue: 0.2).opacity(0.05)],
+                            center: .center,
+                            startRadius: 20,
+                            endRadius: 60
                         )
                     )
-                    .frame(width: 100, height: 100)
-                Image(systemName: "text.bubble.fill")
-                    .font(.system(size: 44))
+                    .frame(width: 110, height: 110)
+                
+                Image(systemName: "face.smiling.fill")
+                    .font(.system(size: 48, weight: .medium))
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [.orange, .orange.opacity(0.8)],
+                            colors: [Color(red: 1.0, green: 0.6, blue: 0.2), Color(red: 1.0, green: 0.5, blue: 0.1)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -712,16 +714,17 @@ struct FolderChip: View {
     let isSelected: Bool
     let action: () -> Void
     
+    private let activeColor = Color(red: 1.0, green: 0.6, blue: 0.2)
+    
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
                 if isSelected {
                     Image(systemName: "folder.fill")
-                        .font(.caption)
+                        .font(.system(size: 12, weight: .semibold))
                 }
                 Text(name)
-                    .font(.subheadline)
-                    .fontWeight(isSelected ? .semibold : .medium)
+                    .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -729,20 +732,16 @@ struct FolderChip: View {
                 Capsule()
                     .fill(
                         isSelected
-                        ? LinearGradient(
-                            colors: [.orange, .orange.opacity(0.85)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                        : LinearGradient(
-                            colors: [Color(UIColor.systemGray6), Color(UIColor.systemGray6)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                        ? AnyShapeStyle(LinearGradient(colors: [activeColor, activeColor.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        : AnyShapeStyle(Color(UIColor.secondarySystemBackground))
                     )
             )
             .foregroundColor(isSelected ? .white : .primary)
-            .shadow(color: isSelected ? .orange.opacity(0.25) : .clear, radius: 4, y: 2)
+            .overlay(
+                Capsule()
+                    .stroke(isSelected ? Color.clear : Color(UIColor.separator).opacity(0.3), lineWidth: 1)
+            )
+            .shadow(color: isSelected ? activeColor.opacity(0.3) : .clear, radius: 6, y: 3)
         }
         .buttonStyle(.plain)
     }
@@ -751,53 +750,60 @@ struct FolderChip: View {
 struct JokeRowView: View {
     let joke: Joke
     
+    private let accentColor = Color(red: 1.0, green: 0.6, blue: 0.2)
+    
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            // Icon badge
+            // Modern icon badge
             ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.orange.opacity(0.12))
-                    .frame(width: 44, height: 44)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [accentColor.opacity(0.15), accentColor.opacity(0.08)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 46, height: 46)
                 
-                Image(systemName: "text.bubble.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(.orange)
+                Image(systemName: "face.smiling.fill")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(accentColor)
             }
             
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(joke.title)
-                    .font(.headline)
-                    .fontWeight(.semibold)
+                    .font(.system(size: 16, weight: .semibold))
                     .lineLimit(1)
                 
                 Text(joke.content)
-                    .font(.subheadline)
+                    .font(.system(size: 14))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
                 
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     if let folder = joke.folder {
                         HStack(spacing: 4) {
                             Image(systemName: "folder.fill")
-                                .font(.caption2)
+                                .font(.system(size: 10))
                             Text(folder.name)
-                                .font(.caption)
+                                .font(.system(size: 12, weight: .medium))
                         }
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(accentColor)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.orange.opacity(0.1))
+                        .background(accentColor.opacity(0.1))
                         .clipShape(Capsule())
                     }
                     
                     Spacer()
                     
                     Text(joke.dateCreated, format: .dateTime.month(.abbreviated).day())
-                        .font(.caption)
+                        .font(.system(size: 12))
                         .foregroundStyle(.tertiary)
                 }
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
     }
 }
