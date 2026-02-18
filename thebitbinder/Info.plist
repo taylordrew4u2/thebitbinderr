@@ -11,9 +11,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>6</string>
+	<string>7.0</string>
 	<key>CFBundleVersion</key>
-	<string>6</string>
+	<string>1</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Allow camera access to scan jokes from notebooks and import photos.</string>
 	<key>NSDocumentsFolderUsageDescription</key>
