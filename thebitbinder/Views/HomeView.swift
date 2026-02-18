@@ -2,13 +2,35 @@ import SwiftUI
 
 struct HomeView: View {
     @State private var notepadText: String = ""
+    @State private var showingAIChat = false
     private let notepadKey = "notepadText"
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottom) {
+            ZStack(alignment: .bottomTrailing) {
                 LinedNotepad(text: $notepadText)
                     .ignoresSafeArea(edges: .bottom)
+                
+                // AI Chat floating button
+                Button {
+                    showingAIChat = true
+                } label: {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 56, height: 56)
+                        .background(
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .clipShape(Circle())
+                        .shadow(color: .blue.opacity(0.4), radius: 8, x: 0, y: 4)
+                }
+                .padding(.trailing, 20)
+                .padding(.bottom, 20)
             }
             .navigationTitle("Notepad")
             .navigationBarTitleDisplayMode(.large)
@@ -19,6 +41,9 @@ struct HomeView: View {
             }
             .onChange(of: notepadText) { _, newValue in
                 UserDefaults.standard.set(newValue, forKey: notepadKey)
+            }
+            .sheet(isPresented: $showingAIChat) {
+                AIChatView()
             }
         }
     }
