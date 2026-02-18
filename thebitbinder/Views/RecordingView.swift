@@ -274,9 +274,10 @@ struct RecordingView: View {
         
         if let url = result.url {
             let name = recordingName.isEmpty ? "Recording - \(setList.name)" : recordingName
+            // Save only the filename, not the full path (sandbox paths change between installs)
             let recording = Recording(
                 name: name,
-                fileURL: url.path,
+                fileURL: url.lastPathComponent,
                 duration: result.duration,
                 setListID: setList.id
             )
