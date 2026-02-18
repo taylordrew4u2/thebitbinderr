@@ -13,7 +13,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>8.0</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -28,7 +28,7 @@
 	<key>NSDocumentsFolderUsageDescription</key>
 	<string>Allow saving exported PDFs and recordings locally.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Allow microphone access to record your performances.</string>
+	<string>Allow microphone access to record your performances and talk to The BitBuilder AI assistant.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Allow photo library access to import images containing jokes.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
@@ -47,6 +47,7 @@
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>arm64</string>
+		<string>microphone</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
