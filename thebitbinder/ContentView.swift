@@ -64,7 +64,7 @@ struct MainTabView: View {
     @State private var showMenu = false
     
     var body: some View {
-        ZStack {
+        ZStack(alignment: .trailing) {
             // Main content
             Group {
                 switch selectedScreen {
@@ -80,184 +80,188 @@ struct MainTabView: View {
                     NotebookView()
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             
             // Dim overlay when menu is open
             if showMenu {
                 Color.black.opacity(0.4)
                     .ignoresSafeArea()
                     .onTapGesture {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             showMenu = false
                         }
                     }
-                    .transition(.opacity)
             }
             
-            // Side notebook menu & tab
-            HStack(spacing: 0) {
-                Spacer()
-                
-                // Menu panel
-                if showMenu {
-                    NotebookMenu(selectedScreen: $selectedScreen, showMenu: $showMenu)
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .trailing).combined(with: .opacity),
-                            removal: .move(edge: .trailing).combined(with: .opacity)
-                        ))
-                }
-                
-                // Notebook spine button
-                NotebookSpineButton(showMenu: $showMenu)
+            // Side menu panel (slides in from right)
+            if showMenu {
+                SideMenuView(selectedScreen: $selectedScreen, showMenu: $showMenu)
+                    .transition(.move(edge: .trailing))
             }
-        }
-    }
-}
-
-// MARK: - Notebook Spine Button
-struct NotebookSpineButton: View {
-    @Binding var showMenu: Bool
-    
-    var body: some View {
-        VStack {
-            Spacer()
             
-            Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    showMenu.toggle()
-                }
-            } label: {
-                ZStack {
-                    // Notebook spine with rings detail
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.55, green: 0.35, blue: 0.22),
-                                    Color(red: 0.45, green: 0.28, blue: 0.18)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: 40, height: 140)
-                        .overlay(
-                            // Spine rings
-                            VStack(spacing: 18) {
-                                ForEach(0..<5) { _ in
-                                    Capsule()
-                                        .fill(Color.white.opacity(0.3))
-                                        .frame(width: 28, height: 4)
-                                }
-                            }
-                        )
-                        .shadow(color: .black.opacity(0.25), radius: 6, x: -3, y: 3)
+            // Menu toggle button (always visible on right edge)
+            if !showMenu {
+                VStack {
+                    Spacer()
                     
-                    // Icon and label
-                    VStack(spacing: 6) {
-                        Image(systemName: showMenu ? "xmark" : "book.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.95))
-                            .rotationEffect(.degrees(showMenu ? 90 : 0))
-                        
-                        if !showMenu {
-                            Text("Menu")
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundColor(.white.opacity(0.8))
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            showMenu = true
                         }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "line.3.horizontal")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("Menu")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.blue, Color.indigo],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .shadow(color: .blue.opacity(0.4), radius: 8, x: 0, y: 4)
+                        )
                     }
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 100)
                 }
             }
-            .offset(x: showMenu ? 0 : 18)
-            
-            Spacer()
         }
     }
 }
 
-// MARK: - Notebook Menu
-struct NotebookMenu: View {
+// MARK: - Side Menu View
+struct SideMenuView: View {
     @Binding var selectedScreen: AppScreen
     @Binding var showMenu: Bool
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header with notebook look
-            HStack(spacing: 10) {
-                Image(systemName: "book.closed.fill")
-                    .font(.system(size: 20))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.blue, .indigo],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                
-                Text("BitBinder")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "book.closed.fill")
+                            .font(.system(size: 22))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.blue, .indigo],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                        
+                        Text("BitBinder")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                    }
+                    
+                    Text("Your comedy companion")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 
                 Spacer()
+                
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        showMenu = false
+                    }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.secondary)
+                }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(
-                LinearGradient(
-                    colors: [Color.blue.opacity(0.08), Color.clear],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            
-            Divider()
-                .padding(.horizontal, 16)
+            .padding(20)
+            .background(Color(UIColor.secondarySystemBackground).opacity(0.5))
             
             // Menu items
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 6) {
-                    ForEach(AppScreen.allCases, id: \.self) { screen in
-                        NotebookMenuItem(
-                            screen: screen,
-                            isSelected: selectedScreen == screen
-                        ) {
-                            selectedScreen = screen
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                showMenu = false
-                            }
+            VStack(spacing: 4) {
+                ForEach(AppScreen.allCases, id: \.self) { screen in
+                    MenuItemButton(
+                        screen: screen,
+                        isSelected: selectedScreen == screen
+                    ) {
+                        selectedScreen = screen
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            showMenu = false
                         }
                     }
                 }
-                .padding(.vertical, 12)
-                .padding(.horizontal, 8)
             }
+            .padding(.vertical, 16)
+            .padding(.horizontal, 12)
             
             Spacer()
             
-            // Footer
-            HStack {
-                Image(systemName: "sparkles")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                Text("Your comedy companion")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.bottom, 16)
+            // Version footer
+            Text("v1.0")
+                .font(.caption2)
+                .foregroundStyle(.quaternary)
+                .padding(.bottom, 20)
         }
-        .frame(width: 240)
+        .frame(width: 280)
+        .frame(maxHeight: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.15), radius: 20, x: -8, y: 0)
+            Color(UIColor.systemBackground)
+                .shadow(color: .black.opacity(0.2), radius: 20, x: -10, y: 0)
         )
-        .padding(.trailing, 2)
+        .ignoresSafeArea()
     }
 }
 
-// MARK: - Menu Item
-struct NotebookMenuItem: View {
+// MARK: - Menu Item Button
+struct MenuItemButton: View {
     let screen: AppScreen
     let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                // Icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(screen.color.opacity(isSelected ? 0.2 : 0.1))
+                        .frame(width: 40, height: 40)
+                    
+                    Image(systemName: screen.icon)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(isSelected ? screen.color : .secondary)
+                }
+                
+                // Label
+                Text(screen.rawValue)
+                    .font(.system(size: 16, weight: isSelected ? .semibold : .medium))
+                    .foregroundColor(isSelected ? .primary : .secondary)
+                
+                Spacer()
+                
+                // Selection indicator
+                if isSelected {
+                    Circle()
+                        .fill(screen.color)
+                        .frame(width: 8, height: 8)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(isSelected ? screen.color.opacity(0.1) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
     let action: () -> Void
     
     var body: some View {
