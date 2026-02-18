@@ -19,7 +19,6 @@ struct thebitbinderApp: App {
             Recording.self,
             SetList.self,
             NotebookPhotoRecord.self,
-            GymWorkout.self,
         ])
         
         let fileManager = FileManager.default
