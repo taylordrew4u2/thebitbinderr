@@ -262,44 +262,6 @@ struct MenuItemButton: View {
         .buttonStyle(.plain)
     }
 }
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                // Icon with colored background
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(screen.color.opacity(isSelected ? 0.2 : 0.1))
-                        .frame(width: 36, height: 36)
-                    
-                    Image(systemName: screen.icon)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(isSelected ? screen.color : .secondary)
-                }
-                
-                Text(screen.rawValue)
-                    .font(.system(size: 15, weight: isSelected ? .semibold : .medium))
-                    .foregroundColor(isSelected ? .primary : .secondary)
-                
-                Spacer()
-                
-                if isSelected {
-                    Circle()
-                        .fill(screen.color)
-                        .frame(width: 8, height: 8)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? screen.color.opacity(0.08) : Color.clear)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
 
 #Preview {
     ContentView()

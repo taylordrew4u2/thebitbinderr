@@ -139,7 +139,7 @@ struct AIChatView: View {
                     }
                 }
             }
-            .navigationTitle("AI Assistant")
+            .navigationTitle("The BitBuilder")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -235,7 +235,7 @@ struct WelcomeMessageView: View {
             }
             
             VStack(spacing: 8) {
-                Text("AI Assistant")
+                Text("The BitBuilder")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                 
                 Text("Ask me anything about comedy, jokes, or get help with your sets!")
