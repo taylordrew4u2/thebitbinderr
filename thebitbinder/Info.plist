@@ -2,6 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.thebitbinder.refresh</string>
+		<string>com.thebitbinder.sync</string>
+	</array>
+	<key>CFBundleDisplayName</key>
+	<string>BitBinder</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +20,11 @@
 	<key>CFBundleShortVersionString</key>
 	<string>9.3</string>
 	<key>CFBundleVersion</key>
-	<string>3</string>
+	<string>9</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -50,13 +61,15 @@
 	<string>Allow saving exported PDFs and recordings locally.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Allow microphone access to record your performances and talk to The BitBuddy AI assistant.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Allow saving processed notebook images back to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Allow photo library access to import images containing jokes.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Allow speech recognition to transcribe recordings and enable Talk-to-Text joke creation.</string>
 	<key>NSUbiquitousContainers</key>
 	<dict>
-		<key>iCloud.com.thebitbinder</key>
+		<key>iCloud.The-BitBinder.thebitbinder</key>
 		<dict>
 			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
 			<false/>
@@ -72,11 +85,8 @@
 		<string>fetch</string>
 		<string>processing</string>
 	</array>
-	<key>BGTaskSchedulerPermittedIdentifiers</key>
-	<array>
-		<string>com.thebitbinder.refresh</string>
-		<string>com.thebitbinder.sync</string>
-	</array>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
@@ -85,7 +95,6 @@
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>arm64</string>
-		<string>microphone</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
